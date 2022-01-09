@@ -29,7 +29,7 @@ import java.util.List;
 
 public class Flows
 {
-
+    //TODO set timeouts on new flows
     private static final Logger logger = LoggerFactory.getLogger(Flows.class);
 
     public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds

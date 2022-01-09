@@ -9,7 +9,7 @@ public class Routing
     /*
     TODO Methods
     1. accept a node to the topology -- check with the LLDP
-    2. set link cost -- called from FamtarFlowListener
+    2. set link cost -- called from FamtarListener
     any topology change (new node, node removal or cost change) triggers Dijkstra recalculation
     * */
 }
