@@ -19,14 +19,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
-public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
+public class FamtarFlowListener implements IFloodlightModule, IOFMessageListener {
 
 	protected IFloodlightProviderService floodlightProvider;
 	protected static Logger logger;
 
 	@Override
 	public String getName() {
-		return SdnLabListener.class.getSimpleName();
+		return FamtarFlowListener.class.getSimpleName();
 	}
 
 	@Override
@@ -46,9 +46,10 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 			FloodlightContext cntx) {
 
 		logger.info("************* NEW PACKET IN *************");
+		// TODO make packet extractor extract the 5-tuple to identify the flow
 		PacketExtractor extractor = new PacketExtractor();
 
-		// TODO LAB 6
+		// TODO replace this with routing logic
 		OFPacketIn pin = (OFPacketIn) msg;
 		OFPort outPort = OFPort.of(0);
 		if (pin.getInPort() == OFPort.of(1)) {
@@ -89,14 +90,13 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 	@Override
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-		logger = LoggerFactory.getLogger(SdnLabListener.class);
+		logger = LoggerFactory.getLogger(FamtarFlowListener.class);
 	}
 
 	@Override
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
 		floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-		logger.info("******************* START (updated) **************************");
-
+		logger.info("******************* START **************************");
 	}
 
 }

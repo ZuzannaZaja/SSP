@@ -28,4 +28,4 @@ net.floodlightcontroller.accesscontrollist.ACL
 net.floodlightcontroller.dhcpserver.DHCPServer
 net.floodlightcontroller.learningswitch.LearningSwitch
 net.floodlightcontroller.statistics.StatisticsCollector
-pl.edu.agh.kt.SdnLabListener
+pl.edu.agh.kt.FamtarFlowListener
