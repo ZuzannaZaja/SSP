@@ -5,4 +5,6 @@ To DO:
 
 Uruchomienie topologii:
 
-sudo mn --custom $PATH/topology.py --topo famtar_topo
+```
+sudo mn output --custom topology.py --topo famtar_topo --controller=remote,ip=127.0.0.1,port=6653
+```
