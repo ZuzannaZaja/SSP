@@ -2,7 +2,7 @@ package pl.edu.agh.kt;
 
 public class Routing
 {
-    //TODO make this keep the current topology image -- the nodes, links and their costs
+    //TODO make this keep the current topology image -- the nodes, links, their costs and capacities
     //TODO make it a singleton
     //TODO use a map of routes between all nodes (7 nodes -> 21 pairs, not a problem)
 

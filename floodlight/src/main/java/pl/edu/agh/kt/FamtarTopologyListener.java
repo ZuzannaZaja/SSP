@@ -16,6 +16,7 @@ public class FamtarTopologyListener implements ITopologyListener
     public void topologyChanged(List<LDUpdate> linkUpdates)
     {
         // TODO: inform Routing about topology changes
+        // TODO: are link speeds reported here?
         logger.debug("Received topology status");
         for (ILinkDiscovery.LDUpdate update : linkUpdates) {
             switch (update.getOperation()) {
