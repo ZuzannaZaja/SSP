@@ -63,7 +63,10 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener {
 			FloodlightContext cntx) {
 
 	    //TODO
+		final FamtarTopology famtarTopology = FamtarTopology.getInstance();
+		famtarTopology.registerSwitch(sw);
 	    FamtarStatisticsCollector.getInstance(sw);
+
 //		logger.info("************* NEW PACKET IN *************");
 		// TODO make packet extractor extract the 5-tuple to identify the flow
 		PacketExtractor extractor = new PacketExtractor();
@@ -78,7 +81,6 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener {
         Flows.simpleAdd(sw, packetIn, cntx, outPort);
 
         // TODO adding routes
-        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
         final DatapathId destinationDatapathId = FamtarTopology.ipDatapathIdMapping.get(extractor.getDestinationIP(cntx));
         final List<NodePortTuple> path = famtarTopology.getPath(sw.getId(), destinationDatapathId);
         Flows.addPath(path);

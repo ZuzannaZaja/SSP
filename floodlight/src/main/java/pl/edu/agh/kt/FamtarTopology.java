@@ -1,9 +1,11 @@
 package pl.edu.agh.kt;
 
 import com.google.common.base.Function;
+import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -14,8 +16,10 @@ import org.slf4j.LoggerFactory;
 import pl.edu.agh.kt.Dijkstra.Edge;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -40,6 +44,7 @@ public class FamtarTopology
     // (switch from, switch to) -> [sw1:port1, sw2:port3, ...]
     private Map<Pair<DatapathId, DatapathId>, List<NodePortTuple>> paths;
     private ConcurrentMap<Edge, Integer> links;
+    private Set<IOFSwitch> switches;
 
     // leaving this static for now
     public static Map<IPv4Address, DatapathId> ipDatapathIdMapping = new ImmutableMap.Builder<IPv4Address, DatapathId>()
@@ -51,11 +56,12 @@ public class FamtarTopology
     {
         links = new ConcurrentHashMap<>();
         paths = new HashMap<>();
+        switches = new HashSet<>();
     }
 
     public void calculatePaths()
     {
-        final Sets.SetView<DatapathId> nodes = getNodes();
+        final Set<DatapathId> nodes = getSwitchDatapathIds();
         for (List<DatapathId> pair : Sets.cartesianProduct(nodes, nodes)) {
             final DatapathId from = pair.get(0);
             final DatapathId to = pair.get(1);
@@ -78,6 +84,26 @@ public class FamtarTopology
     public Map<Edge, Integer> getLinks()
     {
         return links;
+    }
+
+    public Set<IOFSwitch> getSwitches()
+    {
+        return switches;
+    }
+
+    public IOFSwitch getSwitchByDatapathid(final DatapathId datapathId)
+    {
+        return FluentIterable.from(switches)
+                .filter(new Predicate<IOFSwitch>()
+                {
+                    @Override
+                    public boolean apply(final IOFSwitch iofSwitch)
+                    {
+                        return iofSwitch.getId().equals(datapathId);
+                    }
+                })
+                .first()
+                .orNull();
     }
 
     public static FamtarTopology getInstance()
@@ -117,25 +143,27 @@ public class FamtarTopology
         logger.debug("...now the it is {}: {}", edge, links.get(edge));
     }
 
-    private Sets.SetView<DatapathId> getNodes()
+    public void registerSwitch(IOFSwitch ofSwitch)
     {
-        return Sets.union(
-                FluentIterable.from(links.keySet()).transform(new Function<Edge, DatapathId>()
+        if (!switches.contains(ofSwitch)) {
+            logger.debug("first time seeing switch {}: {}", ofSwitch.getId(), ofSwitch);
+            switches.add(ofSwitch);
+            logAllSwitches();
+        }
+    }
+
+    private Set<DatapathId> getSwitchDatapathIds()
+    {
+        return FluentIterable.from(switches)
+                .transform(new Function<IOFSwitch, DatapathId>()
                 {
                     @Override
-                    public DatapathId apply(final Edge edge)
+                    public DatapathId apply(final IOFSwitch iofSwitch)
                     {
-                        return edge.getFrom().getNodeId();
+                        return iofSwitch.getId();
                     }
-                }).toImmutableSet(),
-                FluentIterable.from(links.keySet()).transform(new Function<Edge, DatapathId>()
-                {
-                    @Override
-                    public DatapathId apply(final Edge edge)
-                    {
-                        return edge.getTo().getNodeId();
-                    }
-                }).toImmutableSet());
+                })
+                .toImmutableSet();
     }
 
     private void logAllLinks()
@@ -143,6 +171,14 @@ public class FamtarTopology
         logger.debug("Current state of links map ({} entries)", links.size());
         for (Map.Entry<Edge, Integer> entry : links.entrySet()) {
             logger.debug("\t {}: {}", entry.getKey(), entry.getValue());
+        }
+    }
+
+    private void logAllSwitches()
+    {
+        logger.debug("Current state of switches set ({} entries)", switches.size());
+        for (IOFSwitch sw : switches) {
+            logger.debug("\t {}: {}", sw.getId(), sw.getInetAddress());
         }
     }
 }
