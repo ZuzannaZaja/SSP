@@ -38,7 +38,7 @@ public class PacketExtractor
         logger.info("PacketExtractor: Constructor method called");
     }
 
-    //TODO: implement this and similar methods for the five tuple
+    //TODO: implement this and similar methods for the five tuple Nat2
     public IPv4Address getDestinationIP(FloodlightContext cntx)
     {
         return IPv4Address.of(10, 0, 0, 1);
