@@ -4,6 +4,8 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -13,9 +15,11 @@ public class Dijkstra
 {
     //TODO use this to calculate SPF (https://www.baeldung.com/java-dijkstra)
     // implement this as s static method to avoid dealing with keeping state here
+    private static final Logger logger = LoggerFactory.getLogger(Dijkstra.class);
 
     public static List<NodePortTuple> getShortestPath(Map<Edge, Integer> links, DatapathId from, DatapathId to)
     {
+        logger.debug("building path s_{} -> s_{}", from.getLong(), to.getLong());
         //TODO: shortest path with weights
         return new LinkedList<>();
     }
