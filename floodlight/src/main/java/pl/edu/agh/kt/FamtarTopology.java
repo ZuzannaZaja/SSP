@@ -1,5 +1,8 @@
 package pl.edu.agh.kt;
 
+import com.google.common.base.Function;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.Sets;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -9,10 +12,8 @@ import org.slf4j.LoggerFactory;
 import pl.edu.agh.kt.Dijkstra.Edge;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -26,7 +27,7 @@ public class FamtarTopology
     /*
     TODO Methods
     1. accept a node to the topology -- check with the LLDP
-    2. set link cost -- called from FamtarListener
+    2. set link cost -- called from FamtarStatsListener
     any topology change (new node, node removal or cost change) triggers Dijkstra recalculation
     * */
 
@@ -34,22 +35,26 @@ public class FamtarTopology
     private static final int DEFAULT_LINK_COST = 1;
     private static FamtarTopology singleton;
 
-    private Set<DatapathId> nodes;
-    //    private Map<Pair<DatapathId, DatapathId>, String> links;
     // (switch from, switch to) -> [sw1:port1, sw2:port3, ...]
     private Map<Pair<DatapathId, DatapathId>, List<NodePortTuple>> paths;
     private ConcurrentMap<Edge, Integer> links;
 
     private FamtarTopology()
     {
-        nodes = new HashSet<>();
         links = new ConcurrentHashMap<>();
         paths = new HashMap<>();
     }
 
     public void calculatePaths()
     {
-
+        final Sets.SetView<DatapathId> nodes = getNodes();
+        for (List<DatapathId> pair : Sets.cartesianProduct(nodes, nodes)) {
+            final DatapathId from = pair.get(0);
+            final DatapathId to = pair.get(1);
+            if (!from.equals(to)) {
+                paths.put(new Pair<>(from, to), Dijkstra.getShortestPath(links, from, to));
+            }
+        }
     }
 
     public Map<Pair<DatapathId, DatapathId>, List<NodePortTuple>> getPaths()
@@ -82,8 +87,6 @@ public class FamtarTopology
 
     public void addLink(final ILinkDiscovery.LDUpdate linkUpdate, int cost)
     {
-        nodes.add(linkUpdate.getSrc());
-        nodes.add(linkUpdate.getDst());
         links.putIfAbsent(Edge.from(linkUpdate), cost);
         logAllLinks();
     }
@@ -92,6 +95,34 @@ public class FamtarTopology
     {
         links.remove(Edge.from(linkUpdate));
         logAllLinks();
+    }
+
+    public void updateLinkCost(Edge edge, int cost)
+    {
+        logger.debug("previous cost on link {} was {}...", edge, links.get(edge));
+        links.replace(edge, cost);
+        logger.debug("...now the it is {}: {}", edge, links.get(edge));
+    }
+
+    private Sets.SetView<DatapathId> getNodes()
+    {
+        return Sets.union(
+                FluentIterable.from(links.keySet()).transform(new Function<Edge, DatapathId>()
+                {
+                    @Override
+                    public DatapathId apply(final Edge edge)
+                    {
+                        return edge.getFrom().getNodeId();
+                    }
+                }).toImmutableSet(),
+                FluentIterable.from(links.keySet()).transform(new Function<Edge, DatapathId>()
+                {
+                    @Override
+                    public DatapathId apply(final Edge edge)
+                    {
+                        return edge.getTo().getNodeId();
+                    }
+                }).toImmutableSet());
     }
 
     private void logAllLinks()
