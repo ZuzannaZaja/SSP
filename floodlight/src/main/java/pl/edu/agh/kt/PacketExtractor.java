@@ -30,12 +30,12 @@ public class PacketExtractor
     {
         this.cntx = cntx;
         this.msg = msg;
-        logger.info("PacketExtractor: Constructor method called");
+//        logger.info("PacketExtractor: Constructor method called");
     }
 
     public PacketExtractor()
     {
-        logger.info("PacketExtractor: Constructor method called");
+//        logger.info("PacketExtractor: Constructor method called");
     }
 
     //TODO: implement this and similar methods for the five tuple

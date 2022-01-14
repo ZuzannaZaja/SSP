@@ -12,7 +12,6 @@ import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionEnqueue;
-import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
@@ -56,28 +55,28 @@ public class Flows
 
     public static void simpleAdd(IOFSwitch sw, OFPacketIn pin, FloodlightContext cntx, OFPort outPort)
     {
-        // FlowModBuilder
-        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
-        // match
-        Match m = createMatchFromPacket(sw, pin.getInPort(), cntx);
-
-        // actions
-        OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
-        List<OFAction> actions = new ArrayList<OFAction>();
-        aob.setPort(outPort);
-        aob.setMaxLen(Integer.MAX_VALUE);
-        actions.add(aob.build());
-        fmb.setMatch(m).setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT).setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
-                .setBufferId(pin.getBufferId()).setOutPort(outPort).setPriority(FLOWMOD_DEFAULT_PRIORITY);
-        fmb.setActions(actions);
-        // write flow to switch
-        try {
-            sw.write(fmb.build());
-            logger.info("Flow from port {} forwarded to port {}; match: {}",
-                    new Object[]{pin.getInPort().getPortNumber(), outPort.getPortNumber(), m.toString()});
-        } catch (Exception e) {
-            logger.error("error {}", e);
-        }
+//        // FlowModBuilder
+//        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+//        // match
+//        Match m = createMatchFromPacket(sw, pin.getInPort(), cntx);
+//
+//        // actions
+//        OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
+//        List<OFAction> actions = new ArrayList<OFAction>();
+//        aob.setPort(outPort);
+//        aob.setMaxLen(Integer.MAX_VALUE);
+//        actions.add(aob.build());
+//        fmb.setMatch(m).setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT).setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+//                .setBufferId(pin.getBufferId()).setOutPort(outPort).setPriority(FLOWMOD_DEFAULT_PRIORITY);
+//        fmb.setActions(actions);
+//        // write flow to switch
+//        try {
+//            sw.write(fmb.build());
+//            logger.info("Flow from port {} forwarded to port {}; match: {}",
+//                    new Object[]{pin.getInPort().getPortNumber(), outPort.getPortNumber(), m.toString()});
+//        } catch (Exception e) {
+//            logger.error("error {}", e);
+//        }
     }
 
     public static Match createMatchFromPacket(IOFSwitch sw, OFPort inPort, FloodlightContext cntx)
