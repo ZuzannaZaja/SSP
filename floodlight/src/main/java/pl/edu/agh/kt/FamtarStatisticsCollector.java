@@ -32,6 +32,11 @@ public class FamtarStatisticsCollector
         @Override
         public void run()
         {
+            //TODO: clean logic here
+        }
+
+        public void run1()
+        {
             //TODO: make it run constantly
             //TODO: get max bitrate on link here or somewhere else
             logger.debug("run() begin");
@@ -65,9 +70,12 @@ public class FamtarStatisticsCollector
 //                            long txBytes = pse.getByteCount().getValue();
                             logger.info("\tmatch: {}, txBytes: {}", portNumber, txPackets);
 
+
                             if (measurements.get(portNumber) != null) {
                                 Long last = measurements.get(portNumber);
                                 double rate = (txPackets - last) / 3.0 / 1e9;
+                                //TODO link cost update logic here
+                                //FamtarTopology.getInstance().updateLinkCost();
                                 logger.info("\tmatch: {}, txBitRate: {}", portNumber, rate);
                             } else {
                                 measurements.put(portNumber, txPackets);
@@ -94,15 +102,15 @@ public class FamtarStatisticsCollector
 
     public static FamtarStatisticsCollector getInstance(IOFSwitch sw)
     {
-        logger.debug("getInstance() begin");
+//        logger.debug("getInstance() begin");
         synchronized (FamtarStatisticsCollector.class) {
             if (singleton == null) {
-                logger.debug("Creating FamtarStatisticsCollector singleton");
+//                logger.debug("Creating FamtarStatisticsCollector singleton");
                 singleton = new FamtarStatisticsCollector(sw);
             }
         }
 
-        logger.debug("getInstance() end");
+//        logger.debug("getInstance() end");
         return singleton;
     }
 }

@@ -51,7 +51,7 @@ public class Flows
     public static void addPath(List<NodePortTuple> path)
     {
 //        Lists.reverse(path)
-        logger.debug("Adding path {}...", path);
+//        logger.debug("Adding path {}...", path);
     }
 
     public static void simpleAdd(IOFSwitch sw, OFPacketIn pin, FloodlightContext cntx, OFPort outPort)

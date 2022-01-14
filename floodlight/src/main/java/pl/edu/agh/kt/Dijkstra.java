@@ -19,7 +19,7 @@ public class Dijkstra
 
     public static List<NodePortTuple> getShortestPath(Map<Edge, Integer> links, DatapathId from, DatapathId to)
     {
-        logger.debug("building path s_{} -> s_{}", from.getLong(), to.getLong());
+//        logger.debug("building path s_{} -> s_{}", from.getLong(), to.getLong());
         //TODO: shortest path with weights
         return new LinkedList<>();
     }
