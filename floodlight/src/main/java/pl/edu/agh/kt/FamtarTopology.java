@@ -2,10 +2,12 @@ package pl.edu.agh.kt;
 
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.sdnplatform.sync.internal.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +41,12 @@ public class FamtarTopology
     private Map<Pair<DatapathId, DatapathId>, List<NodePortTuple>> paths;
     private ConcurrentMap<Edge, Integer> links;
 
+    // leaving this static for now
+    public static Map<IPv4Address, DatapathId> ipDatapathIdMapping = new ImmutableMap.Builder<IPv4Address, DatapathId>()
+            .put(IPv4Address.of(10, 0, 0, 1), DatapathId.of(1L))
+            .put(IPv4Address.of(10, 0, 0, 2), DatapathId.of(4L))
+            .build();
+
     private FamtarTopology()
     {
         links = new ConcurrentHashMap<>();
@@ -60,6 +68,11 @@ public class FamtarTopology
     public Map<Pair<DatapathId, DatapathId>, List<NodePortTuple>> getPaths()
     {
         return paths;
+    }
+
+    public List<NodePortTuple> getPath(final DatapathId from, final DatapathId to)
+    {
+        return paths.get(new Pair<>(from, to));
     }
 
     public Map<Edge, Integer> getLinks()

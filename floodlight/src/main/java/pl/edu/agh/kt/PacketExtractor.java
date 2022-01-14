@@ -9,6 +9,7 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,12 @@ public class PacketExtractor
     public PacketExtractor()
     {
         logger.info("PacketExtractor: Constructor method called");
+    }
+
+    //TODO: implement this and similar methods for the five tuple
+    public IPv4Address getDestinationIP(FloodlightContext cntx)
+    {
+        return IPv4Address.of(10, 0, 0, 1);
     }
 
     public void packetExtract(FloodlightContext cntx)

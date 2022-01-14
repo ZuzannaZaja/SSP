@@ -7,6 +7,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -44,6 +45,13 @@ public class Flows
     public Flows()
     {
         logger.info("Flows() begin/end");
+    }
+
+    //TODO: implement (probably add some other parameters)
+    public static void addPath(List<NodePortTuple> path)
+    {
+//        Lists.reverse(path)
+        logger.debug("Adding path {}...", path);
     }
 
     public static void simpleAdd(IOFSwitch sw, OFPacketIn pin, FloodlightContext cntx, OFPort outPort)
