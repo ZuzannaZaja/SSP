@@ -20,6 +20,7 @@ public class Dijkstra
         return new LinkedList<>();
     }
 
+    //TODO: probably should be extracted
     public static class Edge
     {
         private NodePortTuple from;
@@ -54,9 +55,7 @@ public class Dijkstra
             Edge other = (Edge) obj;
             if (!from.equals(other.from))
                 return false;
-            if (!to.equals(other.to))
-                return false;
-            return true;
+            return to.equals(other.to);
         }
 
         @Override
