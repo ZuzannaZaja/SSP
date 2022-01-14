@@ -9,15 +9,18 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 public class FamtarListener implements IFloodlightModule, IOFMessageListener {
@@ -47,13 +50,11 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener {
 
 	@Override
 	public boolean isCallbackOrderingPrereq(OFType type, String name) {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	public boolean isCallbackOrderingPostreq(OFType type, String name) {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
@@ -61,38 +62,45 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener {
 	public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
 			FloodlightContext cntx) {
 
-		logger.info("************* NEW PACKET IN *************");
+	    //TODO
+	    FamtarStatisticsCollector.getInstance(sw);
+//		logger.info("************* NEW PACKET IN *************");
 		// TODO make packet extractor extract the 5-tuple to identify the flow
 		PacketExtractor extractor = new PacketExtractor();
 
-		// TODO replace this with routing logic
-		OFPacketIn pin = (OFPacketIn) msg;
+        OFPacketIn packetIn = (OFPacketIn) msg;
 		OFPort outPort = OFPort.of(0);
-		if (pin.getInPort() == OFPort.of(1)) {
+		if (packetIn.getInPort() == OFPort.of(1)) {
 			outPort = OFPort.of(2);
 		} else {
 			outPort = OFPort.of(1);
 		}
-		logger.info("........looking for TCP 500!");
-		if (extractor.isTCP500(cntx)) {
-			logger.info("........matched TCP 500!");
-			Flows.enqueue(sw, pin, cntx, outPort, 1);
-		} else {
-			Flows.simpleAdd(sw, pin, cntx, outPort);
-		}
+        Flows.simpleAdd(sw, packetIn, cntx, outPort);
+
+        // TODO adding routes
+        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
+        final DatapathId destinationDatapathId = FamtarTopology.ipDatapathIdMapping.get(extractor.getDestinationIP(cntx));
+        final List<NodePortTuple> path = famtarTopology.getPath(sw.getId(), destinationDatapathId);
+        Flows.addPath(path);
+
+//		logger.info("........looking for TCP 500!");
+//		if (extractor.isTCP500(cntx)) {
+//			logger.info("........matched TCP 500!");
+//			Flows.enqueue(sw, pin, cntx, outPort, 1);
+//		} else {
+//			Flows.simpleAdd(sw, pin, cntx, outPort);
+//		}
 
 		return Command.STOP;
 	}
 
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 

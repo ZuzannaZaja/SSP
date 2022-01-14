@@ -16,14 +16,18 @@ public class FamtarTopologyListener implements ITopologyListener
     public void topologyChanged(List<LDUpdate> linkUpdates)
     {
         // TODO: inform Routing about topology changes
+        // TODO: are link speeds reported here?
         logger.debug("Received topology status");
+        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
         for (ILinkDiscovery.LDUpdate update : linkUpdates) {
             switch (update.getOperation()) {
                 case LINK_UPDATED:
                     logger.debug("Link updated. Update {}", update.toString());
+                    famtarTopology.addLink(update);
                     break;
                 case LINK_REMOVED:
                     logger.debug("Link removed. Update {}", update.toString());
+                    famtarTopology.removeLink(update);
                     break;
                 case SWITCH_UPDATED:
                     logger.debug("Switch updated. Update {}", update.toString());
@@ -33,6 +37,9 @@ public class FamtarTopologyListener implements ITopologyListener
                     break;
                 default:
                     break;
+            }
+            if (linkUpdates.size() > 0) {
+                famtarTopology.calculatePaths();
             }
         }
     }
