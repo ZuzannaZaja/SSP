@@ -26,6 +26,7 @@ public class PacketExtractor
     private UDP udp;
     private OFMessage msg;
 
+    //TODO: consider removing this, matching will be done in Flows
     public PacketExtractor(FloodlightContext cntx, OFMessage msg)
     {
         this.cntx = cntx;
@@ -38,7 +39,6 @@ public class PacketExtractor
 //        logger.info("PacketExtractor: Constructor method called");
     }
 
-    //TODO: implement this and similar methods for the five tuple
     public IPv4Address getDestinationIP(FloodlightContext cntx)
     {
         return IPv4Address.of(10, 0, 0, 1);
