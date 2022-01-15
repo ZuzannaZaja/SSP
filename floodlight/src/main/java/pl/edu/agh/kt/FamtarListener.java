@@ -4,10 +4,13 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.statistics.IStatisticsService;
+import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -23,58 +26,76 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-public class FamtarListener implements IFloodlightModule, IOFMessageListener {
+public class FamtarListener implements IFloodlightModule, IOFMessageListener
+{
+    protected IFloodlightProviderService floodlightProvider;
+    protected ITopologyService topologyService;
+    protected IOFSwitchService switchService;
+    protected IStatisticsService statisticsService;
+    protected static Logger logger;
 
-	protected IFloodlightProviderService floodlightProvider;
-	protected ITopologyService topologyService;
-	protected static Logger logger;
+    @Override
+    public String getName()
+    {
+        return FamtarListener.class.getSimpleName();
+    }
 
-	@Override
-	public String getName() {
-		return FamtarListener.class.getSimpleName();
-	}
+    @Override
+    public void init(FloodlightModuleContext context) throws FloodlightModuleException
+    {
+        floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+        topologyService = context.getServiceImpl(ITopologyService.class);
+        switchService = context.getServiceImpl(IOFSwitchService.class);
+        statisticsService = context.getServiceImpl(IStatisticsService.class);
+        logger = LoggerFactory.getLogger(FamtarListener.class);
+    }
 
-	@Override
-	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-		topologyService = context.getServiceImpl(ITopologyService.class);
-		logger = LoggerFactory.getLogger(FamtarListener.class);
-	}
+    @Override
+    public void startUp(FloodlightModuleContext context) throws FloodlightModuleException
+    {
+        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        topologyService.addListener(new FamtarTopologyListener());
+        statisticsService.collectStatistics(true); //TODO: may not be needed
+        logger.info("******************* START **************************");
+    }
 
-	@Override
-	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-		floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-		topologyService.addListener(new FamtarTopologyListener());
-		logger.info("******************* START **************************");
-	}
+    @Override
+    public boolean isCallbackOrderingPrereq(OFType type, String name)
+    {
+        return false;
+    }
 
-	@Override
-	public boolean isCallbackOrderingPrereq(OFType type, String name) {
-		return false;
-	}
+    @Override
+    public boolean isCallbackOrderingPostreq(OFType type, String name)
+    {
+        return false;
+    }
 
-	@Override
-	public boolean isCallbackOrderingPostreq(OFType type, String name) {
-		return false;
-	}
+    @Override
+    public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
+                                                                   FloodlightContext cntx)
+    {
+        //TODO leaving this here for now, move to StatisticsCollector or Topology
+        final Map<NodePortTuple, SwitchPortBandwidth> links = this.statisticsService.getBandwidthConsumption();
+        logger.debug("Current state of port bandwidth utilization ({} entries)", links.size());
+        for (Map.Entry<NodePortTuple, SwitchPortBandwidth> entry : links.entrySet()) {
+            logger.debug("\t {}: {}", entry.getKey(), String.format(
+                    "RX: %s, TX: %s", entry.getValue().getBitsPerSecondRx(), entry.getValue().getBitsPerSecondTx()));
+        }
 
-	@Override
-	public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
-			FloodlightContext cntx) {
-
-	    //TODO
-	    FamtarStatisticsCollector.getInstance(sw);
+        //TODO
+        FamtarStatisticsCollector.getInstance(sw);
 //		logger.info("************* NEW PACKET IN *************");
-		// TODO make packet extractor extract the 5-tuple to identify the flow
-		PacketExtractor extractor = new PacketExtractor();
+        // TODO make packet extractor extract the 5-tuple to identify the flow
+        PacketExtractor extractor = new PacketExtractor();
 
         OFPacketIn packetIn = (OFPacketIn) msg;
-		OFPort outPort = OFPort.of(0);
-		if (packetIn.getInPort() == OFPort.of(1)) {
-			outPort = OFPort.of(2);
-		} else {
-			outPort = OFPort.of(1);
-		}
+        OFPort outPort = OFPort.of(0);
+        if (packetIn.getInPort() == OFPort.of(1)) {
+            outPort = OFPort.of(2);
+        } else {
+            outPort = OFPort.of(1);
+        }
         Flows.simpleAdd(sw, packetIn, cntx, outPort);
 
         // TODO adding routes
@@ -91,23 +112,28 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener {
 //			Flows.simpleAdd(sw, pin, cntx, outPort);
 //		}
 
-		return Command.STOP;
-	}
+        return Command.STOP;
+    }
 
-	@Override
-	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		return null;
-	}
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices()
+    {
+        return null;
+    }
 
-	@Override
-	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-		return null;
-	}
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls()
+    {
+        return null;
+    }
 
-	@Override
-	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-		Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-		l.add(IFloodlightProviderService.class);
-		return l;
-	}
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies()
+    {
+        Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        l.add(IOFSwitchService.class);
+        l.add(IStatisticsService.class);
+        return l;
+    }
 }
