@@ -13,8 +13,7 @@ import java.util.Map;
 
 public class Dijkstra
 {
-    //TODO use this to calculate SPF (https://www.baeldung.com/java-dijkstra)
-    // implement this as s static method to avoid dealing with keeping state here
+    //TODO: implement this as s static method to avoid dealing with keeping state here
     private static final Logger logger = LoggerFactory.getLogger(Dijkstra.class);
 
     public static List<NodePortTuple> getShortestPath(Map<Edge, Integer> links, DatapathId from, DatapathId to)
