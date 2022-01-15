@@ -3,14 +3,23 @@ package pl.edu.agh.kt;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.statistics.*;
+import net.floodlightcontroller.topology.NodePortTuple;
+
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,19 +33,28 @@ public class FamtarStatisticsCollector
     private static final Logger logger = LoggerFactory.getLogger(FamtarStatisticsCollector.class);
     private IOFSwitch sw;
     private ConcurrentHashMap<Integer, Long> measurements = new ConcurrentHashMap<Integer, Long>();
+    private StatisticsCollector statisticsCollector = new StatisticsCollector();
 
     public class PortStatisticsPoller extends TimerTask
     {
         private final Logger logger = LoggerFactory.getLogger(PortStatisticsPoller.class);
 
-        @Override
+       /* @Override
         public void run()
         {
             //TODO: clean logic here
-        }
-
-        public void run1()
+        }*/
+        @Override
+        public void run()
         {
+        	Collection <OFPortDesc> ports = sw.getPorts();
+        	
+        	//Map<OFPortDesc, Long> maxSpeedPorts = new HashMap<OFPortDesc, Long>();
+        	//for(OFPortDesc port : ports){
+        	//	maxSpeedPorts.put(port, port.getMaxSpeed());
+        	//	logger.debug("\tport: {}, max speed: {}", port.getPortNo().getPortNumber(), port.getMaxSpeed());
+        	//}
+        	
             //TODO: make it run constantly
             //TODO: get max bitrate on link here or somewhere else
             logger.debug("run() begin");
@@ -45,7 +63,24 @@ public class FamtarStatisticsCollector
                     logger.error("run() end (no switch)");
                     return;
                 }
-
+          
+            	//statisticsCollector.collectStatistics(true);
+            	
+            	//Map<OFPortDesc, SwitchPortBandwidth> currentBandwidthPorts = new HashMap<OFPortDesc, SwitchPortBandwidth>();
+            	for (OFPortDesc port : ports){
+            		//SwitchPortBandwidth swPortBandwidth = statisticsCollector.getBandwidthConsumption(sw.getId(),port.getPortNo());
+            		//currentBandwidthPorts.put(port,currentBandwidth);
+                    logger.debug("\tport: {}",  port.getPortNo().getPortNumber());
+            		logger.debug("\tmax speed: {}", port.getMaxSpeed());
+            		if (port.getCurrSpeed() >= 0.9 * port.getMaxSpeed()){
+            			//Set max cost
+            			//recalculate shortest paths
+            		}
+            		if (port.getCurrSpeed() <= 0.7 * port.getMaxSpeed()){
+            			//Set default cost
+            			//recalculate shortest paths
+            		}
+            	}
                 ListenableFuture<?> future;
                 List<OFStatsReply> values = null;
                 OFStatsRequest<?> req = null;
