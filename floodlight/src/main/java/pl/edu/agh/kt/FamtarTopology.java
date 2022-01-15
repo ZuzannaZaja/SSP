@@ -102,6 +102,9 @@ public class FamtarTopology
     {
         links.putIfAbsent(Edge.from(linkUpdate), cost);
         logAllLinks();
+        if (links.size() == 24) {
+            Dijkstra.calculateShortesPaths(links);
+        }
     }
 
     public void removeLink(final ILinkDiscovery.LDUpdate linkUpdate)

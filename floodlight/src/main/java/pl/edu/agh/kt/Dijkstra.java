@@ -7,14 +7,72 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Dijkstra
 {
-    //TODO: implement this as s static method to avoid dealing with keeping state here
+    //TODO: implement this as a static method to avoid dealing with keeping state here
     private static final Logger logger = LoggerFactory.getLogger(Dijkstra.class);
+
+    public static void calculateShortesPaths(Map<Edge, Integer> links)
+    {
+        final ConcurrentHashMap<DatapathId, Vertex> verticesMap = getVerticesMap(links);
+        final List<pl.edu.agh.kt.Edge> edgesList = getEdgesList(links, verticesMap);
+
+        final Graph graph = new Graph(verticesMap.values(), edgesList);
+        DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
+        dijkstra.execute(new Vertex(DatapathId.of(1)));
+        final List<Vertex> path = dijkstra.getPath(new Vertex(DatapathId.of(4)));
+        logger.debug("Dijkstra done, path from 1 -> 4");
+        for (Vertex v : path) {
+            logger.debug("\t{}", v);
+        }
+    }
+
+    private static List<pl.edu.agh.kt.Edge> getEdgesList(final Map<Edge, Integer> links, final ConcurrentHashMap<DatapathId, Vertex> verticesMap)
+    {
+        final List<pl.edu.agh.kt.Edge> edges = new ArrayList<>();
+        for (Map.Entry<Edge, Integer> entry : links.entrySet()) {
+            final pl.edu.agh.kt.Edge edge = new pl.edu.agh.kt.Edge(
+                    verticesMap.get(entry.getKey().getFrom().getNodeId()),
+                    verticesMap.get(entry.getKey().getTo().getNodeId()),
+                    entry.getValue());
+            edges.add(edge);
+        }
+        return edges;
+    }
+
+    private static ConcurrentHashMap<DatapathId, Vertex> getVerticesMap(final Map<Edge, Integer> links)
+    {
+        ConcurrentHashMap<DatapathId, Vertex> vertices = new ConcurrentHashMap<>();
+        for (Edge edge : links.keySet()) {
+            final DatapathId fromDatapathId = edge.getFrom().getNodeId();
+            final OFPort fromPortId = edge.getFrom().getPortId();
+            final DatapathId toDatapathId = edge.getTo().getNodeId();
+            final OFPort toPortId = edge.getTo().getPortId();
+
+            if (vertices.containsKey(fromDatapathId)) {
+                vertices.get(fromDatapathId).addNeighbor(toDatapathId, fromPortId);
+            } else {
+                final Vertex vertex = new Vertex(fromDatapathId);
+                vertex.addNeighbor(toDatapathId, fromPortId);
+                vertices.put(fromDatapathId, vertex);
+            }
+
+            if (vertices.containsKey(toDatapathId)) {
+                vertices.get(toDatapathId).addNeighbor(fromDatapathId, toPortId);
+            } else {
+                final Vertex vertex = new Vertex(toDatapathId);
+                vertex.addNeighbor(fromDatapathId, toPortId);
+                vertices.put(toDatapathId, vertex);
+            }
+        }
+        return vertices;
+    }
 
     public static List<NodePortTuple> getShortestPath(Map<Edge, Integer> links, DatapathId from, DatapathId to)
     {
@@ -48,7 +106,8 @@ public class Dijkstra
         }
 
         @Override
-        public boolean equals(Object obj) {
+        public boolean equals(Object obj)
+        {
             if (this == obj)
                 return true;
             if (obj == null)

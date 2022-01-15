@@ -1,25 +1,25 @@
 package pl.edu.agh.kt;
 
-import java.util.List;
+import java.util.Collection;
 
 //inspired by https://www.vogella.com/tutorials/JavaAlgorithmsDijkstra/article.html
 public class Graph
 {
-    private final List<Vertex> vertexes;
-    private final List<Edge> edges;
+    private final Collection<Vertex> vertexes;
+    private final Collection<Edge> edges;
 
-    public Graph(List<Vertex> vertexes, List<Edge> edges)
+    public Graph(Collection<Vertex> vertexes, Collection<Edge> edges)
     {
         this.vertexes = vertexes;
         this.edges = edges;
     }
 
-    public List<Vertex> getVertexes()
+    public Collection<Vertex> getVertexes()
     {
         return vertexes;
     }
 
-    public List<Edge> getEdges()
+    public Collection<Edge> getEdges()
     {
         return edges;
     }
