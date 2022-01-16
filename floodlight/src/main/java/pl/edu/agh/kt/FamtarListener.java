@@ -10,11 +10,11 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.statistics.IStatisticsService;
-import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -77,9 +77,18 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
                                                                    FloodlightContext cntx)
     {
         FamtarStatisticsCollector.getInstance(switchService,statisticsService);
+
 //		logger.info("************* NEW PACKET IN *************");
         // TODO make packet extractor extract the 5-tuple to identify the flow
         PacketExtractor extractor = new PacketExtractor();
+
+        ///////
+        Collection<OFPortDesc> ports = sw.getPorts();
+        for (OFPortDesc port : ports) {
+            logger.debug("\tport: {}", port.getPortNo().getPortNumber());
+            logger.debug("\tmax speed: {}", port.getMaxSpeed());
+        }
+
 
         OFPacketIn packetIn = (OFPacketIn) msg;
         OFPort outPort = OFPort.of(0);
