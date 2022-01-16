@@ -1,6 +1,6 @@
 package pl.edu.agh.kt;
 
-import com.google.common.collect.Iterators;
+import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -9,6 +9,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.topology.NodePortTuple;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -26,9 +27,9 @@ import java.util.List;
 
 public class Flows
 {
-    //TODO set timeouts on new flows
     private static final Logger logger = LoggerFactory.getLogger(Flows.class);
 
+    //TODO set timeouts on new flows
     public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 0; // in seconds
     public static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
     public static short FLOWMOD_DEFAULT_PRIORITY = 100;
@@ -50,12 +51,42 @@ public class Flows
 //        logger.debug("Adding path {}...", path);
     }
 
+    public static void add(IOFSwitch ofSwitch, FloodlightContext cntx, OFPort inPort, OFPort outPort)
+    {
+        if (ofSwitch == null) {
+            logger.debug("got null switch, unable to add flow");
+        } else {
+            final Match match = buildMatch(ofSwitch, cntx, inPort);
+            final OFActionOutput actionOutput = ofSwitch.getOFFactory().actions().buildOutput()
+                    .setPort(outPort)
+                    .setMaxLen(Integer.MAX_VALUE)
+                    .build();
+
+            final OFFlowAdd ofFlowAdd = ofSwitch.getOFFactory().buildFlowAdd()
+                    .setMatch(match)
+                    .setActions(ImmutableList.<OFAction>of(actionOutput))
+                    .setOutPort(outPort)
+                    .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+                    .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+                    //TODO: buffer id?
+                    .build();
+            try {
+                ofSwitch.write(ofFlowAdd);
+                logger.info("Flow from s_{}/{} forwarded to port s_{}/{}; match: {}",
+                        new Object[]{ofSwitch.getId().getLong(), inPort.getPortNumber(),
+                                ofSwitch.getId().getLong(), outPort.getPortNumber(), match.toString()});
+            } catch (Exception e) {
+                logger.error("Unable to add flow to {}", ofSwitch.getId().getLong(), e);
+            }
+        }
+    }
+
     public static void simpleAdd(IOFSwitch sw, OFPacketIn pin, FloodlightContext cntx, OFPort outPort)
     {
         // FlowModBuilder
         OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
         // match
-        Match m = getFamtarMatch(sw, pin.getInPort(), cntx);
+        Match m = buildMatch(sw, cntx, pin.getInPort());
 
         // actions
         OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
@@ -80,7 +111,7 @@ public class Flows
         }
     }
 
-    public static Match getFamtarMatch(IOFSwitch sw, OFPort inPort, FloodlightContext cntx)
+    private static Match buildMatch(IOFSwitch sw, FloodlightContext cntx, OFPort inPort)
     {
         Match.Builder matchBuilder = sw.getOFFactory().buildMatch();
 
@@ -132,15 +163,13 @@ public class Flows
             matchBuilder.setExact(MatchField.ETH_TYPE, EthType.ARP);
         }
 
-
         if (ethernetFrame.getEtherType() == EthType.IPv6) {
             logger.debug("got IPv6 -- using a single flow entry");
             matchBuilder.setExact(MatchField.ETH_TYPE, EthType.IPv6);
         }
 
         final Match build = matchBuilder.build();
-        logger.debug("returning match: {}\n{}", build, Iterators.toArray(build.getMatchFields().iterator(),
-                MatchField.class));
+        logger.debug("returning match: {}", build);
 
         return build;
     }

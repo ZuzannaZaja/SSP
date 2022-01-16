@@ -1,6 +1,7 @@
 package pl.edu.agh.kt;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -88,25 +89,23 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
                                                                    FloodlightContext cntx)
     {
-
-		logger.info("************* NEW PACKET IN *************");
-
 		if (drop(cntx)) {
-		    logger.debug("found IPv6 | ARP | DHCP, dropping");
 		    return Command.STOP;
         }
+
+		logger.info("************* NEW PACKET IN *************");
 
         // TODO make packet extractor extract the 5-tuple to identify the flow
 //        PacketExtractor extractor = new PacketExtractor();
 
         OFPacketIn packetIn = (OFPacketIn) msg;
-        OFPort outPort = OFPort.of(0);
-        if (packetIn.getInPort() == OFPort.of(1)) {
-            outPort = OFPort.of(2);
-        } else {
-            outPort = OFPort.of(1);
-        }
-        Flows.simpleAdd(sw, packetIn, cntx, outPort);
+//        OFPort outPort = OFPort.of(0);
+//        if (packetIn.getInPort() == OFPort.of(1)) {
+//            outPort = OFPort.of(2);
+//        } else {
+//            outPort = OFPort.of(1);
+//        }
+//        Flows.simpleAdd(sw, packetIn, cntx, outPort);
 
         final List<NodePortTuple> oneToTwo = ImmutableList.of(
                 new NodePortTuple(DatapathId.of(1), OFPort.of(3)),
@@ -115,8 +114,19 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         final List<NodePortTuple> twoToOne = ImmutableList.of(
                 new NodePortTuple(DatapathId.of(4), OFPort.of(3)),
                 new NodePortTuple(DatapathId.of(7), OFPort.of(1)),
-                new NodePortTuple(DatapathId.of(1), OFPort.of(4))
-        );
+                new NodePortTuple(DatapathId.of(1), OFPort.of(4)));
+
+        if (sw.getId().getLong() == 1) {
+            logger.debug("switch {}", sw.getId().getLong());
+            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(1), OFPort.of(3));
+            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(1), OFPort.of(6));
+            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
+        } else if (sw.getId().getLong() == 4) {
+            logger.debug("switch {}", sw.getId().getLong());
+            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
+            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
+            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
+        }
 
         // TODO adding routes
 //        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
@@ -124,21 +134,27 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 //        final List<NodePortTuple> path = famtarTopology.getPath(sw.getId(), destinationDatapathId);
 //        Flows.addPath(path);
 
-//		logger.info("........looking for TCP 500!");
-//		if (extractor.isTCP500(cntx)) {
-//			logger.info("........matched TCP 500!");
-//			Flows.enqueue(sw, pin, cntx, outPort, 1);
-//		} else {
-//			Flows.simpleAdd(sw, pin, cntx, outPort);
-//		}
-
-
 //        if (new Random().nextBoolean()) {
 //            buildShortestPaths(DatapathId.of(1));
 //            buildShortestPaths(DatapathId.of(7));
 //        }
 
         return Command.STOP;
+    }
+
+    private void addFlowOnPath(OFPacketIn packetIn, FloodlightContext floodlightContext, List<NodePortTuple> hops)
+    {
+        logger.debug("Adding flows on the following hops:");
+        for (NodePortTuple hop : Lists.reverse(hops)) {
+            final IOFSwitch ofSwitch = this.switchService.getSwitch(hop.getNodeId());
+            if (ofSwitch != null) {
+                logger.debug("\tadding flow to switch_{}", hop.getNodeId().getLong());
+                Flows.simpleAdd(ofSwitch, packetIn, floodlightContext, hop.getPortId());
+            } else {
+                logger.debug("\tunable to add flow to switch_{}", hop.getNodeId().getLong());
+            }
+        }
+        logger.debug("done!");
     }
 
     //TODO: wrap this with try/catch - NPE from null topology
@@ -161,7 +177,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         final BroadcastTree dijkstraBroadcastTree = topologyInstance.dijkstra(
                 this.topologyService.getAllLinks(),
                 root,
-                linkCost,
+                famtarStatisticsCollector.getLinksCosts(),
                 isDstRooted);
 
         logger.debug(String.format(
@@ -172,7 +188,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     private boolean drop(FloodlightContext context)
     {
         Ethernet ethernetFrame = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        if (ethernetFrame.getEtherType() == EthType.IPv6 || ethernetFrame.getEtherType() == EthType.ARP) {
+        if (ethernetFrame.getEtherType() == EthType.IPv6) {
             return true;
         } else
         if (ethernetFrame.getEtherType() == EthType.IPv4) {
