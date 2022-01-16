@@ -10,18 +10,22 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
-import net.floodlightcontroller.topology.TopologyManager;
-
 import net.floodlightcontroller.topology.TopologyInstance;
+import net.floodlightcontroller.topology.TopologyManager;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,6 +88,9 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
                                                                    FloodlightContext cntx)
     {
+		if (drop(cntx)) {
+		    return Command.STOP;
+        }
 
 //		logger.info("************* NEW PACKET IN *************");
         // TODO make packet extractor extract the 5-tuple to identify the flow
@@ -123,10 +130,8 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 //		}
 
 
-//        if (new Random().nextBoolean()) {
-//            buildShortestPaths(DatapathId.of(1));
-//            buildShortestPaths(DatapathId.of(7));
-//        }
+            buildShortestPaths(DatapathId.of(1));
+            buildShortestPaths(DatapathId.of(7));
 
         return Command.STOP;
     }
@@ -147,7 +152,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         }
 
         //TODO: check this variable
-        final boolean isDstRooted = false;
+        final boolean isDstRooted = true;
         final BroadcastTree dijkstraBroadcastTree = topologyInstance.dijkstra(
                 this.topologyService.getAllLinks(),
                 root,
@@ -157,6 +162,34 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         logger.debug(String.format(
                 "Built the following broadcast tree with switch_%s as root (isDstRooted = %s)\n%s",
                 root, isDstRooted, dijkstraBroadcastTree.toString()));
+
+
+        final DatapathId destination = DatapathId.of(7);
+        logger.debug("Checking path from {} to {}", root, destination.getLong());
+        buildroute(root, destination, dijkstraBroadcastTree);
+    }
+
+    private void buildroute(DatapathId srcId, DatapathId dstId, BroadcastTree destinationRootedFullTrees) {
+        //TODO
+    }
+
+    private boolean drop(FloodlightContext context)
+    {
+        Ethernet ethernetFrame = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        if (ethernetFrame.getEtherType() == EthType.IPv6) {
+            return true;
+        } else
+        if (ethernetFrame.getEtherType() == EthType.IPv4) {
+            final IPv4 iPv4packet = (IPv4) ethernetFrame.getPayload();
+            if (iPv4packet.getProtocol() == IpProtocol.UDP) {
+                final UDP udpSegment = (UDP) iPv4packet.getPayload();
+                return udpSegment.getDestinationPort().getPort() == 67 ||
+                        udpSegment.getDestinationPort().getPort() == 68 ||
+                        udpSegment.getSourcePort().getPort() == 67 ||
+                        udpSegment.getSourcePort().getPort() == 68;
+            }
+        }
+        return false;
     }
 
     @Override
