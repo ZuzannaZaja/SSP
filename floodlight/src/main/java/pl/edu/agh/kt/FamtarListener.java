@@ -10,18 +10,22 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
-import net.floodlightcontroller.topology.TopologyManager;
-
 import net.floodlightcontroller.topology.TopologyInstance;
+import net.floodlightcontroller.topology.TopologyManager;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +89,13 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
                                                                    FloodlightContext cntx)
     {
 
-//		logger.info("************* NEW PACKET IN *************");
+		logger.info("************* NEW PACKET IN *************");
+
+		if (drop(cntx)) {
+		    logger.debug("found IPv6 | ARP | DHCP, dropping");
+		    return Command.STOP;
+        }
+
         // TODO make packet extractor extract the 5-tuple to identify the flow
 //        PacketExtractor extractor = new PacketExtractor();
 
@@ -157,6 +167,26 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         logger.debug(String.format(
                 "Built the following broadcast tree with switch_%s as root (isDstRooted = %s)\n%s",
                 root, isDstRooted, dijkstraBroadcastTree.toString()));
+    }
+
+    private boolean drop(FloodlightContext context)
+    {
+        Ethernet ethernetFrame = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        if (ethernetFrame.getEtherType() == EthType.IPv6 || ethernetFrame.getEtherType() == EthType.ARP) {
+            return true;
+        } else
+        if (ethernetFrame.getEtherType() == EthType.IPv4) {
+            final IPv4 iPv4packet = (IPv4) ethernetFrame.getPayload();
+            if (iPv4packet.getProtocol() == IpProtocol.UDP) {
+                final UDP udpSegment = (UDP) iPv4packet.getPayload();
+                return udpSegment.getDestinationPort().getPort() == 67 ||
+                        udpSegment.getDestinationPort().getPort() == 68 ||
+                        udpSegment.getSourcePort().getPort() == 67 ||
+                        udpSegment.getSourcePort().getPort() == 68;
+            }
+        }
+
+        return false;
     }
 
     @Override
