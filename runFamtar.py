@@ -62,7 +62,7 @@ def runNet():
         net.hosts[1].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGRecv &')
         net.hosts[0].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGSend ./flows -l sender.log -x receiver.log ')
         net.hosts[0].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGDec sender.log')
-        net.hosts[1].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGDec receiver.log')
+	print net.hosts[1].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGDec receiver.log')
         net.stop()
 
 
@@ -120,7 +120,7 @@ def runAll():
 	net.hosts[1].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGRecv &')
 	net.hosts[0].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGSend ./flows -l sender.log -x receiver.log')
         net.hosts[0].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGDec sender.log')
-	net.hosts[1].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGDec receiver.log')
+	print net.hosts[1].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGDec receiver.log')
         net.stop()
 
 
