@@ -1,5 +1,6 @@
 package pl.edu.agh.kt;
 
+import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -30,7 +31,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 public class FamtarListener implements IFloodlightModule, IOFMessageListener
@@ -87,7 +87,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 
 //		logger.info("************* NEW PACKET IN *************");
         // TODO make packet extractor extract the 5-tuple to identify the flow
-        PacketExtractor extractor = new PacketExtractor();
+//        PacketExtractor extractor = new PacketExtractor();
 
         OFPacketIn packetIn = (OFPacketIn) msg;
         OFPort outPort = OFPort.of(0);
@@ -98,11 +98,21 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         }
         Flows.simpleAdd(sw, packetIn, cntx, outPort);
 
+        final List<NodePortTuple> oneToTwo = ImmutableList.of(
+                new NodePortTuple(DatapathId.of(1), OFPort.of(3)),
+                new NodePortTuple(DatapathId.of(7), OFPort.of(6)),
+                new NodePortTuple(DatapathId.of(4), OFPort.of(4)));
+        final List<NodePortTuple> twoToOne = ImmutableList.of(
+                new NodePortTuple(DatapathId.of(4), OFPort.of(3)),
+                new NodePortTuple(DatapathId.of(7), OFPort.of(1)),
+                new NodePortTuple(DatapathId.of(1), OFPort.of(4))
+        );
+
         // TODO adding routes
-        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
-        final DatapathId destinationDatapathId = FamtarTopology.ipDatapathIdMapping.get(extractor.getDestinationIP(cntx));
-        final List<NodePortTuple> path = famtarTopology.getPath(sw.getId(), destinationDatapathId);
-        Flows.addPath(path);
+//        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
+//        final DatapathId destinationDatapathId = FamtarTopology.ipDatapathIdMapping.get(extractor.getDestinationIP(cntx));
+//        final List<NodePortTuple> path = famtarTopology.getPath(sw.getId(), destinationDatapathId);
+//        Flows.addPath(path);
 
 //		logger.info("........looking for TCP 500!");
 //		if (extractor.isTCP500(cntx)) {
@@ -113,10 +123,10 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 //		}
 
 
-        if (new Random().nextBoolean()) {
-            buildShortestPaths(DatapathId.of(1));
-            buildShortestPaths(DatapathId.of(7));
-        }
+//        if (new Random().nextBoolean()) {
+//            buildShortestPaths(DatapathId.of(1));
+//            buildShortestPaths(DatapathId.of(7));
+//        }
 
         return Command.STOP;
     }
