@@ -34,7 +34,8 @@ public class FamtarTopology
     * */
 
     private static final Logger logger = LoggerFactory.getLogger(FamtarTopology.class);
-    private static final int DEFAULT_LINK_COST = 1;
+    public static final int DEFAULT_LINK_COST = 1;
+    public static final int MAX_LINK_COST = 10;
     private static FamtarTopology singleton;
 
     // (switch from, switch to) -> [sw1:port1, sw2:port3, ...]

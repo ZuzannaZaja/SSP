@@ -30,7 +30,7 @@ public class Dijkstra
         private NodePortTuple from;
         private NodePortTuple to;
 
-        public Edge(final NodePortTuple from, final NodePortTuple to)
+        public Edge( NodePortTuple from,  NodePortTuple to)
         {
             this.from = from;
             this.to = to;

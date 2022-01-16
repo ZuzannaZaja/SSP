@@ -9,10 +9,13 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.topology.TopologyManager;
+
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -33,8 +36,9 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     protected ITopologyService topologyService;
     protected IOFSwitchService switchService;
     protected IStatisticsService statisticsService;
+    protected FamtarStatisticsCollector famtarStatisticsCollector;
     protected static Logger logger;
-
+    
     @Override
     public String getName()
     {
@@ -48,6 +52,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         topologyService = context.getServiceImpl(ITopologyService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         statisticsService = context.getServiceImpl(IStatisticsService.class);
+        famtarStatisticsCollector = FamtarStatisticsCollector.getInstance(statisticsService, topologyService);
         logger = LoggerFactory.getLogger(FamtarListener.class);
     }
 
@@ -76,7 +81,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
                                                                    FloodlightContext cntx)
     {
-        FamtarStatisticsCollector.getInstance(switchService,statisticsService);
+
 //		logger.info("************* NEW PACKET IN *************");
         // TODO make packet extractor extract the 5-tuple to identify the flow
         PacketExtractor extractor = new PacketExtractor();
