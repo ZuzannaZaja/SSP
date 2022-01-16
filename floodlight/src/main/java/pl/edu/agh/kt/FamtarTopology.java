@@ -86,7 +86,7 @@ public class FamtarTopology
 //        logger.debug("getInstance() begin");
         synchronized (FamtarTopology.class) {
             if (singleton == null) {
-                logger.debug("Creating Routing singleton");
+//                logger.debug("Creating Routing singleton");
                 singleton = new FamtarTopology();
             }
         }

@@ -9,13 +9,14 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.statistics.IStatisticsService;
-import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.topology.TopologyManager;
 
+import net.floodlightcontroller.topology.TopologyInstance;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -26,8 +27,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 public class FamtarListener implements IFloodlightModule, IOFMessageListener
@@ -38,7 +41,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     protected IStatisticsService statisticsService;
     protected FamtarStatisticsCollector famtarStatisticsCollector;
     protected static Logger logger;
-    
+
     @Override
     public String getName()
     {
@@ -109,7 +112,41 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 //			Flows.simpleAdd(sw, pin, cntx, outPort);
 //		}
 
+
+        if (new Random().nextBoolean()) {
+            buildShortestPaths(DatapathId.of(1));
+            buildShortestPaths(DatapathId.of(7));
+        }
+
         return Command.STOP;
+    }
+
+    //TODO: wrap this with try/catch - NPE from null topology
+    private void buildShortestPaths(final DatapathId root)
+    {
+        final TopologyManager topologyManager = (TopologyManager) this.topologyService;
+        final TopologyInstance topologyInstance = topologyManager.getCurrentInstance();
+
+        //TODO: implement this to use updated weights
+        final Map<DatapathId, Set<Link>> allLinks = topologyManager.getAllLinks();
+        final HashMap<Link, Integer> linkCost = new HashMap<>();
+        for (Set<Link> linkSet : allLinks.values()) {
+            for (Link link : linkSet) {
+                linkCost.put(link, FamtarTopology.DEFAULT_LINK_COST);
+            }
+        }
+
+        //TODO: check this variable
+        final boolean isDstRooted = false;
+        final BroadcastTree dijkstraBroadcastTree = topologyInstance.dijkstra(
+                this.topologyService.getAllLinks(),
+                root,
+                linkCost,
+                isDstRooted);
+
+        logger.debug(String.format(
+                "Built the following broadcast tree with switch_%s as root (isDstRooted = %s)\n%s",
+                root, isDstRooted, dijkstraBroadcastTree.toString()));
     }
 
     @Override

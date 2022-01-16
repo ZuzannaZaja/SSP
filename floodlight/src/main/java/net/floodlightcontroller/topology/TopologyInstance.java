@@ -16,6 +16,21 @@
 
 package net.floodlightcontroller.topology;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import net.floodlightcontroller.routing.BroadcastTree;
+import net.floodlightcontroller.routing.Link;
+import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.RouteId;
+import net.floodlightcontroller.servicechaining.ServiceChain;
+import net.floodlightcontroller.util.ClusterDFS;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -25,23 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
-
-import net.floodlightcontroller.routing.BroadcastTree;
-import net.floodlightcontroller.routing.Link;
-import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.routing.RouteId;
-import net.floodlightcontroller.servicechaining.ServiceChain;
-import net.floodlightcontroller.util.ClusterDFS;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 
 /**
  * A representation of a network topology.  Used internally by
@@ -588,9 +586,10 @@ public class TopologyInstance {
 	/*
 	 * Dijkstra that calculates destination rooted trees over the entire topology.
 	*/
-    protected BroadcastTree dijkstra(Map<DatapathId, Set<Link>> links, DatapathId root,
-            Map<Link, Integer> linkCost,
-            boolean isDstRooted) {
+	//TODO: FAMTAR - made this public!
+    public BroadcastTree dijkstra(Map<DatapathId, Set<Link>> links, DatapathId root,
+                                  Map<Link, Integer> linkCost,
+                                  boolean isDstRooted) {
     	HashMap<DatapathId, Link> nexthoplinks = new HashMap<DatapathId, Link>();
     	HashMap<DatapathId, Integer> cost = new HashMap<DatapathId, Integer>();
     	int w;
