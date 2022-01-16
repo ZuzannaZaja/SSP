@@ -3,14 +3,31 @@ package pl.edu.agh.kt;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.routing.Link;
+import net.floodlightcontroller.statistics.IStatisticsService;
+import net.floodlightcontroller.statistics.StatisticsCollector;
+import net.floodlightcontroller.statistics.SwitchPortBandwidth;
+import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.topology.TopologyManager;
+
 import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pl.edu.agh.kt.Dijkstra.Edge;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,95 +39,84 @@ import java.util.concurrent.TimeoutException;
 public class FamtarStatisticsCollector
 {
     private static final Logger logger = LoggerFactory.getLogger(FamtarStatisticsCollector.class);
-    private IOFSwitch sw;
-    private ConcurrentHashMap<Integer, Long> measurements = new ConcurrentHashMap<Integer, Long>();
+    private static final Random RANDOM = new Random();
+    private long maxSpeed = (long) 10e7;
+    private IStatisticsService statisticsCollector;
+    
+    private Map<Link, Integer> linksCosts;
+    private ITopologyService topologyService;
 
     public class PortStatisticsPoller extends TimerTask
     {
         private final Logger logger = LoggerFactory.getLogger(PortStatisticsPoller.class);
 
-        @Override
         public void run()
         {
-            //TODO: clean logic here
-        }
-
-        public void run1()
-        {
-            //TODO: make it run constantly
-            //TODO: get max bitrate on link here or somewhere else
-            logger.debug("run() begin");
-            synchronized (FamtarStatisticsCollector.this) {
-                if (sw == null) { // no switch
-                    logger.error("run() end (no switch)");
-                    return;
+        	boolean changed = false;
+        	Map<NodePortTuple, Set<Link>> switchPortLinks = ((TopologyManager) topologyService).getSwitchPortLinks();
+            
+            final Map<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurements = statisticsCollector.getBandwidthConsumption(); 
+            
+            if(RANDOM.nextFloat()>0.7){
+            	logger.debug("Current state of port bandwidth utilization ({} entries)", bandwidthMeasurements.size());
+                for (Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement : bandwidthMeasurements.entrySet()) {
+                    logger.debug("\t {}: {}", bandwidthMeasurement.getKey(), String.format(
+                            "RX: %s, TX: %s", bandwidthMeasurement.getValue().getBitsPerSecondRx().getValue(), bandwidthMeasurement.getValue().getBitsPerSecondTx().getValue()));
                 }
-
-                ListenableFuture<?> future;
-                List<OFStatsReply> values = null;
-                OFStatsRequest<?> req = null;
-
-                req = sw.getOFFactory().buildPortStatsRequest().build();
-                try {
-                    if (req != null) {
-                        future = sw.writeStatsRequest(req);
-                        values = (List<OFStatsReply>) future.get(
-                                PORT_STATISTICS_POLLING_INTERVAL * 1000 / 2,
-                                TimeUnit.MILLISECONDS);
-                    }
-
-                    //TODO handle port traffic here and trigger cost changes
-                    OFPortStatsReply psr = (OFPortStatsReply) values.get(0);
-                    logger.info("Switch id: {}", sw.getId());
-                    for (OFPortStatsEntry pse : psr.getEntries()) {
-                        int portNumber = pse.getPortNo().getPortNumber();
-//                        Match portNumber = pse.getMatch();
-                        if (true) {
-                            long txPackets = pse.getTxPackets().getValue();
-//                            long txBytes = pse.getByteCount().getValue();
-                            logger.info("\tmatch: {}, txBytes: {}", portNumber, txPackets);
-
-
-                            if (measurements.get(portNumber) != null) {
-                                Long last = measurements.get(portNumber);
-                                double rate = (txPackets - last) / 3.0 / 1e9;
-                                //TODO link cost update logic here
-                                //FamtarTopology.getInstance().updateLinkCost();
-                                logger.info("\tmatch: {}, txBitRate: {}", portNumber, rate);
-                            } else {
-                                measurements.put(portNumber, txPackets);
-                            }
-                        }
-                    }
-
-                } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-                    logger.error("Error during statistics polling", ex);
+            } 	
+            
+            for (Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement : bandwidthMeasurements.entrySet()) {               
+                if(bandwidthMeasurement.getValue().getBitsPerSecondTx().getValue() >= 0.9*maxSpeed){
+                	for(Map.Entry<NodePortTuple, Set<Link>> switchPortLink : switchPortLinks.entrySet()){
+                		if(switchPortLink.getKey().equals(bandwidthMeasurement.getKey())){
+                			linksCosts.put(switchPortLink.getValue().iterator().next(), FamtarTopology.MAX_LINK_COST);
+                			changed = true;
+                		}
+                	}
+                }                    
+                
+                if(bandwidthMeasurement.getValue().getBitsPerSecondTx().getValue() <= 0.7*maxSpeed){
+                	for(Map.Entry<NodePortTuple, Set<Link>> switchPortLink : switchPortLinks.entrySet()){
+                		if(switchPortLink.getKey().equals(bandwidthMeasurement.getKey())){
+                			linksCosts.put(switchPortLink.getValue().iterator().next(), FamtarTopology.DEFAULT_LINK_COST);
+                			changed = true;
+                		}
+                	}
                 }
             }
-            logger.debug("run() end");
+            if(changed){
+            	logger.debug("Calculate shortest paths");
+            }
         }
     }
 
-    public static final int PORT_STATISTICS_POLLING_INTERVAL = 3000; // in ms
+    public static final int PORT_STATISTICS_POLLING_INTERVAL = 9000; // in ms
     private static FamtarStatisticsCollector singleton;
 
-    private FamtarStatisticsCollector(IOFSwitch sw)
+    private FamtarStatisticsCollector(IStatisticsService statisticsCollector, ITopologyService topologyService)
     {
-        this.sw = sw;
+        this.statisticsCollector = statisticsCollector;
+        this.topologyService = topologyService;
+        this.linksCosts = new HashMap<>();
         new Timer().scheduleAtFixedRate(new PortStatisticsPoller(), 0, PORT_STATISTICS_POLLING_INTERVAL);
     }
 
-    public static FamtarStatisticsCollector getInstance(IOFSwitch sw)
+    public static FamtarStatisticsCollector getInstance(IStatisticsService statisticsCollector, ITopologyService topologyService)
     {
 //        logger.debug("getInstance() begin");
         synchronized (FamtarStatisticsCollector.class) {
             if (singleton == null) {
 //                logger.debug("Creating FamtarStatisticsCollector singleton");
-                singleton = new FamtarStatisticsCollector(sw);
+                singleton = new FamtarStatisticsCollector(statisticsCollector, topologyService);
             }
         }
 
 //        logger.debug("getInstance() end");
         return singleton;
+    }
+    
+    public Map<Link, Integer> getLinksCosts()
+    {   	
+    	return this.linksCosts;
     }
 }

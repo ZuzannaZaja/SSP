@@ -9,10 +9,13 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.topology.TopologyManager;
+
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -25,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class FamtarListener implements IFloodlightModule, IOFMessageListener
 {
@@ -32,8 +36,9 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     protected ITopologyService topologyService;
     protected IOFSwitchService switchService;
     protected IStatisticsService statisticsService;
+    protected FamtarStatisticsCollector famtarStatisticsCollector;
     protected static Logger logger;
-
+    
     @Override
     public String getName()
     {
@@ -47,6 +52,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         topologyService = context.getServiceImpl(ITopologyService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         statisticsService = context.getServiceImpl(IStatisticsService.class);
+        famtarStatisticsCollector = FamtarStatisticsCollector.getInstance(statisticsService, topologyService);
         logger = LoggerFactory.getLogger(FamtarListener.class);
     }
 
@@ -75,16 +81,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
                                                                    FloodlightContext cntx)
     {
-        //TODO leaving this here for now, move to StatisticsCollector or Topology
-        final Map<NodePortTuple, SwitchPortBandwidth> links = this.statisticsService.getBandwidthConsumption();
-        logger.debug("Current state of port bandwidth utilization ({} entries)", links.size());
-        for (Map.Entry<NodePortTuple, SwitchPortBandwidth> entry : links.entrySet()) {
-            logger.debug("\t {}: {}", entry.getKey(), String.format(
-                    "RX: %s, TX: %s", entry.getValue().getBitsPerSecondRx(), entry.getValue().getBitsPerSecondTx()));
-        }
 
-        //TODO
-        FamtarStatisticsCollector.getInstance(sw);
 //		logger.info("************* NEW PACKET IN *************");
         // TODO make packet extractor extract the 5-tuple to identify the flow
         PacketExtractor extractor = new PacketExtractor();
