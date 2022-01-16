@@ -3,40 +3,24 @@ package pl.edu.agh.kt;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.IOFSwitch;
-<<<<<<< HEAD
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.StatisticsCollector;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.topology.NodePortTuple;
 
-=======
-import net.floodlightcontroller.statistics.*;
-import net.floodlightcontroller.topology.NodePortTuple;
-
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
->>>>>>> a1c220836f667ea514aaec410191a38c9d09b48a
 import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
-<<<<<<< HEAD
 import org.projectfloodlight.openflow.types.DatapathId;
-=======
-import org.projectfloodlight.openflow.types.OFPort;
->>>>>>> a1c220836f667ea514aaec410191a38c9d09b48a
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-<<<<<<< HEAD
 import java.util.Set;
-=======
->>>>>>> a1c220836f667ea514aaec410191a38c9d09b48a
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,13 +36,12 @@ public class FamtarStatisticsCollector
     protected IOFSwitchService switchService;
     private IStatisticsService statisticsCollector;
     private ConcurrentHashMap<Integer, Long> measurements = new ConcurrentHashMap<Integer, Long>();
-    private StatisticsCollector statisticsCollector = new StatisticsCollector();
 
     public class PortStatisticsPoller extends TimerTask
     {
         private final Logger logger = LoggerFactory.getLogger(PortStatisticsPoller.class);
 
-       /* @Override
+/*        @Override
         public void run()
         {
             //TODO: clean logic here
@@ -94,6 +77,7 @@ public class FamtarStatisticsCollector
                     logger.error("run() end (no switch)");
                     return;
                 }
+                
                 ListenableFuture<?> future;
                 List<OFStatsReply> values = null;
                 OFStatsRequest<?> req = null;
