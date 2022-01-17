@@ -20,7 +20,6 @@ import java.util.TimerTask;
 
 public class FamtarStatisticsCollector
 {
-
     private static final Random RANDOM = new Random();
     private static final int PORT_STATISTICS_POLLING_INTERVAL = 9000; // in ms
     private static final long MAX_SPEED = (long) 10E7; // in bps
@@ -76,7 +75,7 @@ public class FamtarStatisticsCollector
                         if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
                             final Link link = unpackLink(switchPortLink);
                             linksCosts.put(link, FamtarTopology.MAX_LINK_COST);
-                            changed = previousLinkCosts.get(link) != FamtarTopology.MAX_LINK_COST;
+                            changed = changed || previousLinkCosts.get(link) != FamtarTopology.MAX_LINK_COST;
                         }
                     }
                 }
@@ -86,7 +85,7 @@ public class FamtarStatisticsCollector
                         if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
                             final Link link = unpackLink(switchPortLink);
                             linksCosts.put(link, FamtarTopology.DEFAULT_LINK_COST);
-                            changed = previousLinkCosts.get(link) != FamtarTopology.DEFAULT_LINK_COST;
+                            changed = changed || previousLinkCosts.get(link) != FamtarTopology.DEFAULT_LINK_COST;
                         }
                     }
                 }
