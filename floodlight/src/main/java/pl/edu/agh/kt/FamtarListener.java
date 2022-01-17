@@ -41,6 +41,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     protected IOFSwitchService switchService;
     protected IStatisticsService statisticsService;
     protected FamtarStatisticsCollector famtarStatisticsCollector;
+    protected FamtarTopology famtarTopology;
     protected static Logger logger;
 
     @Override
@@ -56,7 +57,8 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         topologyService = context.getServiceImpl(ITopologyService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         statisticsService = context.getServiceImpl(IStatisticsService.class);
-        famtarStatisticsCollector = FamtarStatisticsCollector.getInstance(statisticsService, topologyService);
+        famtarTopology = new FamtarTopology(topologyService);
+        famtarStatisticsCollector = FamtarStatisticsCollector.getInstance(statisticsService, topologyService, famtarTopology);
         logger = LoggerFactory.getLogger(FamtarListener.class);
     }
 

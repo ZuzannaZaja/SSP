@@ -27,7 +27,7 @@ public class Flows
 {
     private static final Logger logger = LoggerFactory.getLogger(Flows.class);
 
-    private static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 4; // in seconds
+    private static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 0; // infinite for testing purposes
     private static final short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
     private static final short FLOWMOD_DEFAULT_PRIORITY = 100;
 

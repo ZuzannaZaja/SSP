@@ -21,28 +21,36 @@ import java.util.TimerTask;
 public class FamtarStatisticsCollector
 {
     private static final Random RANDOM = new Random();
-    private static final int PORT_STATISTICS_POLLING_INTERVAL = 9000; // in ms
+    private static final int PORT_STATISTICS_POLLING_INTERVAL = 2000; // in ms
     private static final long MAX_SPEED = (long) 10E7; // in bps
+    private static final double INCREASE_THRESHOLD = 0.3; // 0.9
+    private static final double DECREASE_THRESHOLD = 0.1; // 0.7
     private static FamtarStatisticsCollector singleton;
     private static final Logger logger = LoggerFactory.getLogger(FamtarStatisticsCollector.class);
 
     private IStatisticsService statisticsCollector;
     private ITopologyService topologyService;
+    private FamtarTopology famtarTopology;
     private Map<Link, Integer> linksCosts;
 
-    private FamtarStatisticsCollector(IStatisticsService statisticsCollector, ITopologyService topologyService)
+    private FamtarStatisticsCollector(IStatisticsService statisticsCollector,
+                                      ITopologyService topologyService,
+                                      FamtarTopology famtarTopology)
     {
         this.statisticsCollector = statisticsCollector;
         this.topologyService = topologyService;
+        this.famtarTopology = famtarTopology;
         this.linksCosts = new HashMap<>();
         new Timer().scheduleAtFixedRate(new BandwidthMonitor(), 0, PORT_STATISTICS_POLLING_INTERVAL);
     }
 
-    public static FamtarStatisticsCollector getInstance(IStatisticsService statisticsCollector, ITopologyService topologyService)
+    public static FamtarStatisticsCollector getInstance(IStatisticsService statisticsCollector,
+                                                        ITopologyService topologyService,
+                                                        FamtarTopology famtarTopology)
     {
         synchronized (FamtarStatisticsCollector.class) {
             if (singleton == null) {
-                singleton = new FamtarStatisticsCollector(statisticsCollector, topologyService);
+                singleton = new FamtarStatisticsCollector(statisticsCollector, topologyService, famtarTopology);
             }
         }
         return singleton;
@@ -70,7 +78,7 @@ public class FamtarStatisticsCollector
             }
 
             for (Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement : bandwidthMeasurements.entrySet()) {
-                if (getTxbps(bandwidthMeasurement) >= 0.9 * MAX_SPEED) {
+                if (getTxbps(bandwidthMeasurement) >= INCREASE_THRESHOLD * MAX_SPEED) {
                     for (Map.Entry<NodePortTuple, Set<Link>> switchPortLink : switchPortLinks.entrySet()) {
                         if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
                             final Link link = unpackLink(switchPortLink);
@@ -80,7 +88,7 @@ public class FamtarStatisticsCollector
                     }
                 }
 
-                if (getTxbps(bandwidthMeasurement) <= 0.7 * MAX_SPEED) {
+                if (getTxbps(bandwidthMeasurement) <= DECREASE_THRESHOLD * MAX_SPEED) {
                     for (Map.Entry<NodePortTuple, Set<Link>> switchPortLink : switchPortLinks.entrySet()) {
                         if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
                             final Link link = unpackLink(switchPortLink);
@@ -91,7 +99,8 @@ public class FamtarStatisticsCollector
                 }
             }
             if (changed) {
-                logger.debug("Calculate shortest paths");
+                logger.debug("Calling shortest paths recalculation");
+                famtarTopology.calculatePaths(linksCosts);
             }
         }
 
