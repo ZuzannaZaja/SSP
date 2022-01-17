@@ -90,9 +90,6 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 
         logger.info("************* NEW PACKET IN *************");
 
-        // TODO make packet extractor extract the 5-tuple to identify the flow
-//        PacketExtractor extractor = new PacketExtractor();
-
         //TODO: handle first buffered packet -- vide lab 5, extract the IP and send it manually
         OFPacketIn packetIn = (OFPacketIn) msg;
 
@@ -107,17 +104,6 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
             Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
             Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
         }
-
-        // TODO adding routes
-//        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
-//        final DatapathId destinationDatapathId = FamtarTopology.HOSTS_MAPPING.get(extractor.getDestinationIP(cntx));
-//        final List<NodePortTuple> path = famtarTopology.getPath(sw.getId(), destinationDatapathId);
-//        Flows.addPath(path);
-
-//        if (new Random().nextBoolean()) {
-//            buildShortestPaths(DatapathId.of(1));
-//            buildShortestPaths(DatapathId.of(7));
-//        }
 
         return Command.STOP;
     }

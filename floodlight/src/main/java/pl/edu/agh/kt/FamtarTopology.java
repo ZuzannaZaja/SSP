@@ -1,10 +1,6 @@
 package pl.edu.agh.kt;
 
-import com.google.common.base.Function;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Sets;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -34,10 +30,11 @@ public class FamtarTopology
     any topology change (new node, node removal or cost change) triggers Dijkstra recalculation
     * */
 
-    private static final Logger logger = LoggerFactory.getLogger(FamtarTopology.class);
     public static final int DEFAULT_LINK_COST = 1;
     public static final int MAX_LINK_COST = 10;
     private static FamtarTopology singleton;
+
+    private static final Logger logger = LoggerFactory.getLogger(FamtarTopology.class);
 
     // (switch from, switch to) -> [sw1:port1, sw2:port3, ...]
     private Map<Pair<DatapathId, DatapathId>, List<NodePortTuple>> paths;
@@ -56,14 +53,6 @@ public class FamtarTopology
 
     public void calculatePaths()
     {
-        final Sets.SetView<DatapathId> nodes = getNodes();
-        for (List<DatapathId> pair : Sets.cartesianProduct(nodes, nodes)) {
-            final DatapathId from = pair.get(0);
-            final DatapathId to = pair.get(1);
-            if (!from.equals(to)) {
-                paths.put(new Pair<>(from, to), Dijkstra.getShortestPath(links, from, to));
-            }
-        }
     }
 
     public Map<Pair<DatapathId, DatapathId>, List<NodePortTuple>> getPaths()
@@ -89,58 +78,5 @@ public class FamtarTopology
             }
         }
         return singleton;
-    }
-
-    public void addLink(final ILinkDiscovery.LDUpdate linkUpdate)
-    {
-        addLink(linkUpdate, DEFAULT_LINK_COST);
-    }
-
-    public void addLink(final ILinkDiscovery.LDUpdate linkUpdate, int cost)
-    {
-        links.putIfAbsent(Edge.from(linkUpdate), cost);
-        logAllLinks();
-    }
-
-    public void removeLink(final ILinkDiscovery.LDUpdate linkUpdate)
-    {
-        links.remove(Edge.from(linkUpdate));
-        logAllLinks();
-    }
-
-    public void updateLinkCost(Edge edge, int cost)
-    {
-        logger.debug("previous cost on link {} was {}...", edge, links.get(edge));
-        links.replace(edge, cost);
-        logger.debug("...now the it is {}: {}", edge, links.get(edge));
-    }
-
-    private Sets.SetView<DatapathId> getNodes()
-    {
-        return Sets.union(
-                FluentIterable.from(links.keySet()).transform(new Function<Edge, DatapathId>()
-                {
-                    @Override
-                    public DatapathId apply(final Edge edge)
-                    {
-                        return edge.getFrom().getNodeId();
-                    }
-                }).toImmutableSet(),
-                FluentIterable.from(links.keySet()).transform(new Function<Edge, DatapathId>()
-                {
-                    @Override
-                    public DatapathId apply(final Edge edge)
-                    {
-                        return edge.getTo().getNodeId();
-                    }
-                }).toImmutableSet());
-    }
-
-    private void logAllLinks()
-    {
-        logger.debug("Current state of links map ({} entries)", links.size());
-        for (Map.Entry<Edge, Integer> entry : links.entrySet()) {
-            logger.debug("\t {}: {}", entry.getKey(), entry.getValue());
-        }
     }
 }
