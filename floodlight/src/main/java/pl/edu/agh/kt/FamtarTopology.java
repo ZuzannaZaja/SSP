@@ -8,6 +8,7 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.sdnplatform.sync.internal.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,11 +43,9 @@ public class FamtarTopology
     private Map<Pair<DatapathId, DatapathId>, List<NodePortTuple>> paths;
     private ConcurrentMap<Edge, Integer> links;
 
-    // leaving this static for now
-    //TODO: add port as well
-    public static Map<IPv4Address, DatapathId> ipDatapathIdMapping = new ImmutableMap.Builder<IPv4Address, DatapathId>()
-            .put(IPv4Address.of(10, 0, 0, 1), DatapathId.of(1L))
-            .put(IPv4Address.of(10, 0, 0, 2), DatapathId.of(4L))
+    public static Map<IPv4Address, NodePortTuple> HOSTS_MAPPING = new ImmutableMap.Builder<IPv4Address, NodePortTuple>()
+            .put(IPv4Address.of(10, 0, 0, 1), new NodePortTuple(DatapathId.of(1L), OFPort.of(4)))
+            .put(IPv4Address.of(10, 0, 0, 2), new NodePortTuple(DatapathId.of(4L), OFPort.of(4)))
             .build();
 
     private FamtarTopology()
@@ -87,7 +86,6 @@ public class FamtarTopology
 //        logger.debug("getInstance() begin");
         synchronized (FamtarTopology.class) {
             if (singleton == null) {
-//                logger.debug("Creating Routing singleton");
                 singleton = new FamtarTopology();
             }
         }

@@ -114,7 +114,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 
         // TODO adding routes
 //        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
-//        final DatapathId destinationDatapathId = FamtarTopology.ipDatapathIdMapping.get(extractor.getDestinationIP(cntx));
+//        final DatapathId destinationDatapathId = FamtarTopology.HOSTS_MAPPING.get(extractor.getDestinationIP(cntx));
 //        final List<NodePortTuple> path = famtarTopology.getPath(sw.getId(), destinationDatapathId);
 //        Flows.addPath(path);
 
