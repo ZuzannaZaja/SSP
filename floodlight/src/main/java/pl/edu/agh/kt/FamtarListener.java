@@ -1,5 +1,6 @@
 package pl.edu.agh.kt;
 
+import com.google.common.collect.Lists;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -9,23 +10,29 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.statistics.IStatisticsService;
-import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.topology.TopologyInstance;
 import net.floodlightcontroller.topology.TopologyManager;
-
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,7 +45,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     protected IStatisticsService statisticsService;
     protected FamtarStatisticsCollector famtarStatisticsCollector;
     protected static Logger logger;
-    
+
     @Override
     public String getName()
     {
@@ -81,35 +88,105 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
                                                                    FloodlightContext cntx)
     {
+		if (drop(cntx)) {
+		    return Command.STOP;
+        }
 
-//		logger.info("************* NEW PACKET IN *************");
+		logger.info("************* NEW PACKET IN *************");
+
         // TODO make packet extractor extract the 5-tuple to identify the flow
-        PacketExtractor extractor = new PacketExtractor();
+//        PacketExtractor extractor = new PacketExtractor();
 
         OFPacketIn packetIn = (OFPacketIn) msg;
-        OFPort outPort = OFPort.of(0);
-        if (packetIn.getInPort() == OFPort.of(1)) {
-            outPort = OFPort.of(2);
-        } else {
-            outPort = OFPort.of(1);
+        //TODO: handle first buffered packet
+
+        if (sw.getId().getLong() == 1) {
+            logger.debug("switch {}", sw.getId().getLong());
+            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
+            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(1), OFPort.of(6));
+            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(4), OFPort.of(3));
+        } else if (sw.getId().getLong() == 4) {
+            logger.debug("switch {}", sw.getId().getLong());
+            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
+            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
+            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
         }
-        Flows.simpleAdd(sw, packetIn, cntx, outPort);
 
         // TODO adding routes
-        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
-        final DatapathId destinationDatapathId = FamtarTopology.ipDatapathIdMapping.get(extractor.getDestinationIP(cntx));
-        final List<NodePortTuple> path = famtarTopology.getPath(sw.getId(), destinationDatapathId);
-        Flows.addPath(path);
+//        final FamtarTopology famtarTopology = FamtarTopology.getInstance();
+//        final DatapathId destinationDatapathId = FamtarTopology.ipDatapathIdMapping.get(extractor.getDestinationIP(cntx));
+//        final List<NodePortTuple> path = famtarTopology.getPath(sw.getId(), destinationDatapathId);
+//        Flows.addPath(path);
 
-//		logger.info("........looking for TCP 500!");
-//		if (extractor.isTCP500(cntx)) {
-//			logger.info("........matched TCP 500!");
-//			Flows.enqueue(sw, pin, cntx, outPort, 1);
-//		} else {
-//			Flows.simpleAdd(sw, pin, cntx, outPort);
-//		}
+//        if (new Random().nextBoolean()) {
+//            buildShortestPaths(DatapathId.of(1));
+//            buildShortestPaths(DatapathId.of(7));
+//        }
 
         return Command.STOP;
+    }
+
+    private void addFlowOnPath(OFPacketIn packetIn, FloodlightContext floodlightContext, List<NodePortTuple> hops)
+    {
+        logger.debug("Adding flows on the following hops:");
+        for (NodePortTuple hop : Lists.reverse(hops)) {
+            final IOFSwitch ofSwitch = this.switchService.getSwitch(hop.getNodeId());
+            if (ofSwitch != null) {
+                logger.debug("\tadding flow to switch_{}", hop.getNodeId().getLong());
+                Flows.simpleAdd(ofSwitch, packetIn, floodlightContext, hop.getPortId());
+            } else {
+                logger.debug("\tunable to add flow to switch_{}", hop.getNodeId().getLong());
+            }
+        }
+        logger.debug("done!");
+    }
+
+    //TODO: wrap this with try/catch - NPE from null topology
+    private void buildShortestPaths(final DatapathId root)
+    {
+        final TopologyManager topologyManager = (TopologyManager) this.topologyService;
+        final TopologyInstance topologyInstance = topologyManager.getCurrentInstance();
+
+        //TODO: implement this to use updated weights
+        final Map<DatapathId, Set<Link>> allLinks = topologyManager.getAllLinks();
+        final HashMap<Link, Integer> linkCost = new HashMap<>();
+        for (Set<Link> linkSet : allLinks.values()) {
+            for (Link link : linkSet) {
+                linkCost.put(link, FamtarTopology.DEFAULT_LINK_COST);
+            }
+        }
+
+        //TODO: check this variable
+        final boolean isDstRooted = false;
+        final BroadcastTree dijkstraBroadcastTree = topologyInstance.dijkstra(
+                this.topologyService.getAllLinks(),
+                root,
+                famtarStatisticsCollector.getLinksCosts(),
+                isDstRooted);
+
+        logger.debug(String.format(
+                "Built the following broadcast tree with switch_%s as root (isDstRooted = %s)\n%s",
+                root, isDstRooted, dijkstraBroadcastTree.toString()));
+    }
+
+    private boolean drop(FloodlightContext context)
+    {
+        Ethernet ethernetFrame = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        if (ethernetFrame.getEtherType() == EthType.IPv6) {
+            return true;
+        } else
+        if (ethernetFrame.getEtherType() == EthType.IPv4) {
+            final IPv4 iPv4packet = (IPv4) ethernetFrame.getPayload();
+            if (iPv4packet.getProtocol() == IpProtocol.UDP) {
+                final UDP udpSegment = (UDP) iPv4packet.getPayload();
+                return udpSegment.getDestinationPort().getPort() == 67 ||
+                        udpSegment.getDestinationPort().getPort() == 68 ||
+                        udpSegment.getSourcePort().getPort() == 67 ||
+                        udpSegment.getSourcePort().getPort() == 68;
+            }
+        }
+
+        return false;
     }
 
     @Override
