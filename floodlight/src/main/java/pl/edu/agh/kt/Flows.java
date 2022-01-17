@@ -10,6 +10,8 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -79,7 +81,7 @@ public class Flows
         }
     }
 
-    private static Match buildMatch(IOFSwitch sw, FloodlightContext cntx, OFPort inPort)
+    public static Match buildMatch(IOFSwitch sw, FloodlightContext cntx, OFPort inPort)
     {
         Match.Builder matchBuilder = sw.getOFFactory().buildMatch();
 
@@ -132,5 +134,32 @@ public class Flows
         logger.debug("returning match: {}", match.toString());
 
         return match;
+    }
+
+    public static void sendPacketOut(IOFSwitch iofSwitch,
+                                     OFPacketIn packetIn,
+                                     FloodlightContext context,
+                                     OFPort outPort)
+    {
+        Ethernet ethernetFrame = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        if (ethernetFrame.getEtherType() == EthType.IPv4) {
+            logger.debug("handling packet out...");
+            OFPacketOut.Builder builder = iofSwitch.getOFFactory()
+                    .buildPacketOut()
+                    .setActions(ImmutableList.<OFAction>of(iofSwitch.getOFFactory().actions().output(outPort, 0XffFFffFF)))
+                    .setInPort(OFPort.CONTROLLER)
+                    .setBufferId(iofSwitch.getBuffers() == 0 ? OFBufferId.NO_BUFFER : packetIn.getBufferId());
+            if (packetIn.getBufferId() == OFBufferId.NO_BUFFER) {
+                builder.setData(packetIn.getData());
+            }
+            OFPacketOut packetOut = builder.build();
+            try {
+                final boolean write = iofSwitch.write(packetOut);
+                logger.debug("...writing packet out was {}successful", write ? "" : "not ");
+            } catch (Exception e) {
+                logger.error("An error occurred while handling packet out", e);
+            }
+        }
+
     }
 }

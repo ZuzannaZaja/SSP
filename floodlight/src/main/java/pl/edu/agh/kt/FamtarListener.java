@@ -97,11 +97,13 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 
         if (sw.getId().getLong() == 1) {
             logger.debug("switch {}", sw.getId().getLong());
+            Flows.sendPacketOut(sw, packetIn, cntx, OFPort.of(3));
             Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
             Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(1), OFPort.of(6));
             Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(4), OFPort.of(3));
         } else if (sw.getId().getLong() == 4) {
             logger.debug("switch {}", sw.getId().getLong());
+            Flows.sendPacketOut(sw, packetIn, cntx, OFPort.of(3));
             Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
             Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
             Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
