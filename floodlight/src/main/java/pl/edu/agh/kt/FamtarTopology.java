@@ -83,13 +83,11 @@ public class FamtarTopology
 
     public static FamtarTopology getInstance()
     {
-//        logger.debug("getInstance() begin");
         synchronized (FamtarTopology.class) {
             if (singleton == null) {
                 singleton = new FamtarTopology();
             }
         }
-//        logger.debug("getInstance() end");
         return singleton;
     }
 

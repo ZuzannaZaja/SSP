@@ -1,6 +1,5 @@
 package pl.edu.agh.kt;
 
-import com.google.common.collect.Lists;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -17,7 +16,6 @@ import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.topology.TopologyInstance;
 import net.floodlightcontroller.topology.TopologyManager;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -33,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -85,20 +82,19 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     }
 
     @Override
-    public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
-                                                                   FloodlightContext cntx)
+    public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx)
     {
-		if (drop(cntx)) {
-		    return Command.STOP;
+        if (drop(cntx)) {
+            return Command.STOP;
         }
 
-		logger.info("************* NEW PACKET IN *************");
+        logger.info("************* NEW PACKET IN *************");
 
         // TODO make packet extractor extract the 5-tuple to identify the flow
 //        PacketExtractor extractor = new PacketExtractor();
 
+        //TODO: handle first buffered packet -- vide lab 5, extract the IP and send it manually
         OFPacketIn packetIn = (OFPacketIn) msg;
-        //TODO: handle first buffered packet
 
         if (sw.getId().getLong() == 1) {
             logger.debug("switch {}", sw.getId().getLong());
@@ -126,21 +122,6 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         return Command.STOP;
     }
 
-    private void addFlowOnPath(OFPacketIn packetIn, FloodlightContext floodlightContext, List<NodePortTuple> hops)
-    {
-        logger.debug("Adding flows on the following hops:");
-        for (NodePortTuple hop : Lists.reverse(hops)) {
-            final IOFSwitch ofSwitch = this.switchService.getSwitch(hop.getNodeId());
-            if (ofSwitch != null) {
-                logger.debug("\tadding flow to switch_{}", hop.getNodeId().getLong());
-                Flows.simpleAdd(ofSwitch, packetIn, floodlightContext, hop.getPortId());
-            } else {
-                logger.debug("\tunable to add flow to switch_{}", hop.getNodeId().getLong());
-            }
-        }
-        logger.debug("done!");
-    }
-
     //TODO: wrap this with try/catch - NPE from null topology
     private void buildShortestPaths(final DatapathId root)
     {
@@ -156,7 +137,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
             }
         }
 
-        //TODO: check this variable
+        //TODO: true or false? -- we're adding flows from the end of the path
         final boolean isDstRooted = false;
         final BroadcastTree dijkstraBroadcastTree = topologyInstance.dijkstra(
                 this.topologyService.getAllLinks(),
@@ -174,8 +155,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         Ethernet ethernetFrame = IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         if (ethernetFrame.getEtherType() == EthType.IPv6) {
             return true;
-        } else
-        if (ethernetFrame.getEtherType() == EthType.IPv4) {
+        } else if (ethernetFrame.getEtherType() == EthType.IPv4) {
             final IPv4 iPv4packet = (IPv4) ethernetFrame.getPayload();
             if (iPv4packet.getProtocol() == IpProtocol.UDP) {
                 final UDP udpSegment = (UDP) iPv4packet.getPayload();
