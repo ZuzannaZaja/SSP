@@ -10,8 +10,6 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -23,22 +21,15 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class Flows
 {
     private static final Logger logger = LoggerFactory.getLogger(Flows.class);
 
-    //TODO set timeouts on new flows
-    public static short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 4; // in seconds
-    public static short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
-    public static short FLOWMOD_DEFAULT_PRIORITY = 100;
-
-    protected static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
-    protected static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
-    protected static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
-    protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
+    private static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT = 4; // in seconds
+    private static final short FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+    private static final short FLOWMOD_DEFAULT_PRIORITY = 100;
 
     public Flows()
     {
@@ -50,6 +41,11 @@ public class Flows
     {
 //        Lists.reverse(path)
 //        logger.debug("Adding path {}...", path);
+    }
+
+    public static void sendPacketOut()
+    {
+        //TODO vide lab 5
     }
 
     public static void add(IOFSwitch ofSwitch, FloodlightContext cntx, OFPort inPort, OFPort outPort)
@@ -69,46 +65,17 @@ public class Flows
                     .setOutPort(outPort)
                     .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
                     .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+                    .setPriority(FLOWMOD_DEFAULT_PRIORITY)
                     .setBufferId(OFBufferId.NO_BUFFER)
                     .build();
             try {
                 ofSwitch.write(ofFlowAdd);
-                logger.info("Flow from s_{}/{} forwarded to port s_{}/{}; match: {}",
+                logger.info("Flow from s_{}/{} forwarded to port s_{}/{}",
                         new Object[]{ofSwitch.getId().getLong(), inPort.getPortNumber(),
-                                ofSwitch.getId().getLong(), outPort.getPortNumber(), match.toString()});
+                                ofSwitch.getId().getLong(), outPort.getPortNumber()});
             } catch (Exception e) {
                 logger.error("Unable to add flow to {}", ofSwitch.getId().getLong(), e);
             }
-        }
-    }
-
-    public static void simpleAdd(IOFSwitch sw, OFPacketIn pin, FloodlightContext cntx, OFPort outPort)
-    {
-        // FlowModBuilder
-        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
-        // match
-        Match m = buildMatch(sw, cntx, pin.getInPort());
-
-        // actions
-        OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
-        List<OFAction> actions = new ArrayList<>();
-        aob.setPort(outPort);
-        aob.setMaxLen(Integer.MAX_VALUE);
-        actions.add(aob.build());
-        fmb.setMatch(m)
-                .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-                .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
-                .setBufferId(pin.getBufferId())
-                .setOutPort(outPort)
-                .setPriority(FLOWMOD_DEFAULT_PRIORITY);
-        fmb.setActions(actions);
-        // write flow to switch
-        try {
-            sw.write(fmb.build());
-            logger.info("Flow from port {} forwarded to port {}; match: {}",
-                    new Object[]{pin.getInPort().getPortNumber(), outPort.getPortNumber(), m.toString()});
-        } catch (Exception e) {
-            logger.error("error {}", e);
         }
     }
 
@@ -123,9 +90,8 @@ public class Flows
         Ethernet ethernetFrame = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         logger.debug("\tchecking ether type {}...", ethernetFrame.getEtherType().toString());
         if (ethernetFrame.getEtherType() == EthType.IPv4) {
-            logger.debug("\t...got IPv4");
             final IPv4 iPv4packet = (IPv4) ethernetFrame.getPayload();
-            logger.debug("\tgot addresses {} -> {}",
+            logger.debug("\tgot IPv4: {} -> {}",
                     iPv4packet.getSourceAddress().toString(),
                     iPv4packet.getDestinationAddress().toString());
             matchBuilder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
@@ -135,21 +101,19 @@ public class Flows
             logger.debug("\tchecking ip proto...");
 
             if (iPv4packet.getProtocol() == IpProtocol.ICMP) {
-                logger.debug("\t...got icmp");
+                logger.debug("\t...got ICMP");
                 matchBuilder.setExact(MatchField.IP_PROTO, IpProtocol.ICMP);
             } else if (iPv4packet.getProtocol() == IpProtocol.TCP) {
-                logger.debug("\t...got tcp");
                 final TCP tcpSegment = (TCP) iPv4packet.getPayload();
-                logger.debug("\tgot ports {} -> {}",
+                logger.debug("\tgot TCP: {} -> {}",
                         tcpSegment.getSourcePort().toString(),
                         tcpSegment.getDestinationPort().toString());
                 matchBuilder.setExact(MatchField.IP_PROTO, IpProtocol.TCP);
                 matchBuilder.setExact(MatchField.TCP_DST, tcpSegment.getDestinationPort());
                 matchBuilder.setExact(MatchField.TCP_SRC, tcpSegment.getSourcePort());
             } else if (iPv4packet.getProtocol() == IpProtocol.UDP) {
-                logger.debug("\t...got udp");
                 final UDP udpSegment = (UDP) iPv4packet.getPayload();
-                logger.debug("\tgot ports {} -> {}",
+                logger.debug("\tgot UDP: {} -> {}",
                         udpSegment.getSourcePort().toString(),
                         udpSegment.getDestinationPort().toString());
                 matchBuilder.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
@@ -164,14 +128,9 @@ public class Flows
             matchBuilder.setExact(MatchField.ETH_TYPE, EthType.ARP);
         }
 
-        if (ethernetFrame.getEtherType() == EthType.IPv6) {
-            logger.debug("got IPv6 -- using a single flow entry");
-            matchBuilder.setExact(MatchField.ETH_TYPE, EthType.IPv6);
-        }
+        final Match match = matchBuilder.build();
+        logger.debug("returning match: {}", match.toString());
 
-        final Match build = matchBuilder.build();
-        logger.debug("returning match: {}", build);
-
-        return build;
+        return match;
     }
 }
