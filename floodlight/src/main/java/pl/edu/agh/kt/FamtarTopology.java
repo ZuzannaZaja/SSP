@@ -43,6 +43,7 @@ public class FamtarTopology
     private ConcurrentMap<Edge, Integer> links;
 
     // leaving this static for now
+    //TODO: add port as well
     public static Map<IPv4Address, DatapathId> ipDatapathIdMapping = new ImmutableMap.Builder<IPv4Address, DatapathId>()
             .put(IPv4Address.of(10, 0, 0, 1), DatapathId.of(1L))
             .put(IPv4Address.of(10, 0, 0, 2), DatapathId.of(4L))

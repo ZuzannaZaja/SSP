@@ -18,6 +18,7 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,7 @@ public class Flows
                     .setOutPort(outPort)
                     .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
                     .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
-                    //TODO: buffer id?
+                    .setBufferId(OFBufferId.NO_BUFFER)
                     .build();
             try {
                 ofSwitch.write(ofFlowAdd);

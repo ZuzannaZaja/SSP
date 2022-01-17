@@ -1,6 +1,5 @@
 package pl.edu.agh.kt;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -99,33 +98,18 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 //        PacketExtractor extractor = new PacketExtractor();
 
         OFPacketIn packetIn = (OFPacketIn) msg;
-//        OFPort outPort = OFPort.of(0);
-//        if (packetIn.getInPort() == OFPort.of(1)) {
-//            outPort = OFPort.of(2);
-//        } else {
-//            outPort = OFPort.of(1);
-//        }
-//        Flows.simpleAdd(sw, packetIn, cntx, outPort);
-
-        final List<NodePortTuple> oneToTwo = ImmutableList.of(
-                new NodePortTuple(DatapathId.of(1), OFPort.of(3)),
-                new NodePortTuple(DatapathId.of(7), OFPort.of(6)),
-                new NodePortTuple(DatapathId.of(4), OFPort.of(4)));
-        final List<NodePortTuple> twoToOne = ImmutableList.of(
-                new NodePortTuple(DatapathId.of(4), OFPort.of(3)),
-                new NodePortTuple(DatapathId.of(7), OFPort.of(1)),
-                new NodePortTuple(DatapathId.of(1), OFPort.of(4)));
+        //TODO: handle first buffered packet
 
         if (sw.getId().getLong() == 1) {
             logger.debug("switch {}", sw.getId().getLong());
-            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(1), OFPort.of(3));
-            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(1), OFPort.of(6));
             Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
+            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(1), OFPort.of(6));
+            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(4), OFPort.of(3));
         } else if (sw.getId().getLong() == 4) {
             logger.debug("switch {}", sw.getId().getLong());
-            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
-            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
             Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
+            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
+            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
         }
 
         // TODO adding routes
