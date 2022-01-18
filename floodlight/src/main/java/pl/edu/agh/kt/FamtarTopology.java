@@ -1,8 +1,6 @@
 package pl.edu.agh.kt;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Table;
-import com.google.common.collect.TreeBasedTable;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -16,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -41,18 +40,22 @@ public class FamtarTopology
     private ITopologyService topologyService;
 
     //switch from, switch to, [sw1:port1, sw2:port3, ...]
-    private Table<DatapathId, DatapathId, List<NodePortTuple>> routes;
+//    private Table<DatapathId, DatapathId, List<NodePortTuple>> routes;
+    private Map<IPv4Address, List<Link>> routes;
     private Map<Link, Integer> previousCosts;
 
+    private static final IPv4Address HOST_ONE = IPv4Address.of(10, 0, 0, 1);
+    private static final IPv4Address HOST_TWO = IPv4Address.of(10, 0, 0, 2);
+
     public static Map<IPv4Address, NodePortTuple> HOSTS_MAPPING = new ImmutableMap.Builder<IPv4Address, NodePortTuple>()
-            .put(IPv4Address.of(10, 0, 0, 1), new NodePortTuple(DatapathId.of(1L), OFPort.of(4)))
-            .put(IPv4Address.of(10, 0, 0, 2), new NodePortTuple(DatapathId.of(4L), OFPort.of(4)))
+            .put(HOST_ONE, new NodePortTuple(DatapathId.of(1L), OFPort.of(4)))
+            .put(HOST_TWO, new NodePortTuple(DatapathId.of(4L), OFPort.of(4)))
             .build();
 
     FamtarTopology(ITopologyService topologyService)
     {
         this.topologyService = topologyService;
-        this.routes = TreeBasedTable.create();
+        this.routes = new HashMap<>();
         this.previousCosts = new HashMap<>();
     }
 
@@ -61,21 +64,41 @@ public class FamtarTopology
         if (isCostMappingChanged(linksCosts)) {
             logLinksCosts(linksCosts);
             logger.debug("calculating paths...");
-            //TODO: make this store previous costs and memoize the broadcast trees
-            //routes.put()
+            final BroadcastTree fromOne = buildShortestPaths(DatapathId.of(1), linksCosts);
+            List<Link> routeToSwitchFour = getPath(DatapathId.of(1), DatapathId.of(4), fromOne);
+            routes.put(HOST_TWO, routeToSwitchFour);
+
+            final BroadcastTree fromFour = buildShortestPaths(DatapathId.of(4), linksCosts);
+            List<Link> routeToSwitchOne = getPath(DatapathId.of(4), DatapathId.of(1), fromFour);
+            routes.put(HOST_TWO, routeToSwitchOne);
 
             this.previousCosts = ImmutableMap.copyOf(linksCosts);
         }
     }
 
-    public List<NodePortTuple> getPath(final DatapathId from, final DatapathId to)
+    private List<Link> getPath(DatapathId src, DatapathId dst, BroadcastTree tree)
     {
-        logger.debug("getting route: s_{} -> s_{}", from.getLong(), to.getLong());
-        return routes.get(from, to);
+        logger.debug("building path from {} to {}", src, dst);
+        LinkedList<Link> hops = new LinkedList<>();
+        DatapathId current = dst;
+        while (!current.equals(src)) {
+            logger.debug("\t current node: {}", current);
+            Link link = tree.getTreeLink(current);
+            logger.debug("\t adding link: {}", link);
+            hops.add(link);
+            current = link.getSrc();
+        }
+        return hops;
+    }
+
+    public List<Link> getPath(IPv4Address from, IPv4Address to)
+    {
+        logger.debug("getting route: {} -> {}", from, to);
+        return routes.get(to);
     }
 
     //TODO: wrap this with try/catch - NPE from null topology
-    private void buildShortestPaths(DatapathId root, Map<Link, Integer> linksCosts)
+    private BroadcastTree buildShortestPaths(DatapathId root, Map<Link, Integer> linksCosts)
     {
         final TopologyManager topologyManager = (TopologyManager) this.topologyService;
         final TopologyInstance topologyInstance = topologyManager.getCurrentInstance();
@@ -91,6 +114,8 @@ public class FamtarTopology
         logger.debug(String.format(
                 "Built the following broadcast tree with switch_%s as root (isDstRooted = %s)\n%s",
                 root, isDstRooted, dijkstraBroadcastTree.toString()));
+
+        return dijkstraBroadcastTree;
     }
 
     private boolean isCostMappingChanged(final Map<Link, Integer> linksCosts)
