@@ -52,6 +52,7 @@ public class FamtarTopology
 
     public void calculatePaths(final Map<Link, Integer> linksCosts)
     {
+        //TODO: make this store previous costs and memoize the broadcast trees
 //        routes.put()
     }
 
