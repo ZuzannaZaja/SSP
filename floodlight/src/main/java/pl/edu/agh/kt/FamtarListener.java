@@ -93,15 +93,27 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         //TODO switches 1 and 4 are our entry points, handle only them
         try {
             logger.debug("getting the current route from FamtarTopology...");
-            for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_ONE, FamtarTopology.HOST_TWO)) {
-                IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
-                Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
-                Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
-            }
-            for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_TWO, FamtarTopology.HOST_ONE)) {
-                IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
-                Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
-                Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+            if (sw.getId().getLong() == 1) {
+                for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_ONE, FamtarTopology.HOST_TWO)) {
+                    IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
+                    // TODO MJ: 2022-01-18 adding flows in the other direction?k
+                    Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
+                    Flows.addReverse(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+                    if (isARP(cntx)) {
+                        //adding only arp in the other direction
+                        Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+                    }
+                }
+            } else if (sw.getId().getLong() == 4) {
+                for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_TWO, FamtarTopology.HOST_ONE)) {
+                    IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
+                    Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
+                    Flows.addReverse(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+                    if (isARP(cntx)) {
+                        //adding only arp in the other direction
+                        Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+                    }
+                }
             }
             logger.debug("...done");
         } catch (Exception e) {
@@ -129,6 +141,12 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         }
 
         return false;
+    }
+
+    private boolean isARP(FloodlightContext context)
+    {
+        return IFloodlightProviderService.bcStore.get(context, IFloodlightProviderService.CONTEXT_PI_PAYLOAD)
+                .getEtherType() == EthType.ARP;
     }
 
     private Map<Link, Integer> initializeLinksCosts()
