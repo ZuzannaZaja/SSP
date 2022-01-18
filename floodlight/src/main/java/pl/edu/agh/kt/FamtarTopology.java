@@ -32,22 +32,20 @@ public class FamtarTopology
     any topology change (new node, node removal or cost change) triggers Dijkstra recalculation
     * */
 
-    public static final int DEFAULT_LINK_COST = 1;
-    public static final int MAX_LINK_COST = 10;
+    static final int DEFAULT_LINK_COST = 1;
+    static final int MAX_LINK_COST = 10;
+    static final IPv4Address HOST_ONE = IPv4Address.of(10, 0, 0, 1);
+    static final IPv4Address HOST_TWO = IPv4Address.of(10, 0, 0, 2);
 
     private static final Logger logger = LoggerFactory.getLogger(FamtarTopology.class);
 
     private ITopologyService topologyService;
 
-    //switch from, switch to, [sw1:port1, sw2:port3, ...]
-//    private Table<DatapathId, DatapathId, List<NodePortTuple>> routes;
-    private Map<IPv4Address, List<Link>> routes;
+    private Map<IPv4Address, List<Hop>> routes;
     private Map<Link, Integer> previousCosts;
 
-    private static final IPv4Address HOST_ONE = IPv4Address.of(10, 0, 0, 1);
-    private static final IPv4Address HOST_TWO = IPv4Address.of(10, 0, 0, 2);
 
-    public static Map<IPv4Address, NodePortTuple> HOSTS_MAPPING = new ImmutableMap.Builder<IPv4Address, NodePortTuple>()
+    private static Map<IPv4Address, NodePortTuple> HOSTS_MAPPING = new ImmutableMap.Builder<IPv4Address, NodePortTuple>()
             .put(HOST_ONE, new NodePortTuple(DatapathId.of(1L), OFPort.of(4)))
             .put(HOST_TWO, new NodePortTuple(DatapathId.of(4L), OFPort.of(4)))
             .build();
@@ -65,33 +63,44 @@ public class FamtarTopology
             logLinksCosts(linksCosts);
             logger.debug("calculating paths...");
             final BroadcastTree fromOne = buildShortestPaths(DatapathId.of(1), linksCosts);
-            List<Link> routeToSwitchFour = getPath(DatapathId.of(1), DatapathId.of(4), fromOne);
+            List<Hop> routeToSwitchFour = getPath(DatapathId.of(1), DatapathId.of(4), fromOne);
             routes.put(HOST_TWO, routeToSwitchFour);
 
             final BroadcastTree fromFour = buildShortestPaths(DatapathId.of(4), linksCosts);
-            List<Link> routeToSwitchOne = getPath(DatapathId.of(4), DatapathId.of(1), fromFour);
+            List<Hop> routeToSwitchOne = getPath(DatapathId.of(4), DatapathId.of(1), fromFour);
             routes.put(HOST_TWO, routeToSwitchOne);
 
             this.previousCosts = ImmutableMap.copyOf(linksCosts);
         }
     }
 
-    private List<Link> getPath(DatapathId src, DatapathId dst, BroadcastTree tree)
+    private List<Hop> getPath(DatapathId src, DatapathId dst, BroadcastTree tree)
     {
         logger.debug("building path from {} to {}", src, dst);
-        LinkedList<Link> hops = new LinkedList<>();
+        LinkedList<Hop> hops = new LinkedList<>();
+        OFPort nextOutPort = dst.getLong() == 1 ?
+                HOSTS_MAPPING.get(HOST_ONE).getPortId() :
+                HOSTS_MAPPING.get(HOST_TWO).getPortId();
+
         DatapathId current = dst;
         while (!current.equals(src)) {
-            logger.debug("\t current node: {}", current);
             Link link = tree.getTreeLink(current);
-            logger.debug("\t adding link: {}", link);
-            hops.add(link);
+            Hop hop = new Hop(link.getDstPort(), link.getDst(), nextOutPort);
+            hops.add(hop);
+            logger.debug("\t adding hop: {}", hop);
+            nextOutPort = link.getSrcPort();
             current = link.getSrc();
         }
+        OFPort fromHost = src.getLong() == 1 ?
+                HOSTS_MAPPING.get(HOST_ONE).getPortId() :
+                HOSTS_MAPPING.get(HOST_TWO).getPortId();
+        Hop finalHop = new Hop(fromHost, src, nextOutPort);
+        logger.debug("\t adding hop: {}", finalHop);
+        hops.add(finalHop);
         return hops;
     }
 
-    public List<Link> getPath(IPv4Address from, IPv4Address to)
+    public List<Hop> getPath(IPv4Address from, IPv4Address to)
     {
         logger.debug("getting route: {} -> {}", from, to);
         return routes.get(to);
