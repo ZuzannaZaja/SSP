@@ -12,14 +12,12 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
-import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.TopologyInstance;
+import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.topology.TopologyManager;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
@@ -68,6 +66,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         topologyService.addListener(new FamtarTopologyListener());
         statisticsService.collectStatistics(true); //TODO: may not be needed
+        famtarTopology.calculatePaths(initializeLinksCosts());
         logger.info("******************* START **************************");
     }
 
@@ -90,54 +89,82 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
             return Command.STOP;
         }
 
-        logger.info("************* NEW PACKET IN *************");
+//        logger.info("************* NEW PACKET IN *************");
 
         //TODO: handle first buffered packet -- vide lab 5, extract the IP and send it manually
-        OFPacketIn packetIn = (OFPacketIn) msg;
 
-        if (sw.getId().getLong() == 1) {
-            logger.debug("switch {}", sw.getId().getLong());
-            Flows.sendPacketOut(sw, packetIn, cntx, OFPort.of(3));
-            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
-            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(1), OFPort.of(6));
-            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(4), OFPort.of(3));
-        } else if (sw.getId().getLong() == 4) {
-            logger.debug("switch {}", sw.getId().getLong());
-            Flows.sendPacketOut(sw, packetIn, cntx, OFPort.of(3));
-            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
-            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
-            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
-        }
+        //TODO: PANIC
+//        try {
+            logger.debug("getting the current route from FamtarTopology...");
+            for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_ONE, FamtarTopology.HOST_TWO)) {
+                IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
+                Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
+                Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+            }
+            for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_TWO, FamtarTopology.HOST_ONE)) {
+                IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
+                Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
+                Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+            }
+            logger.debug("...done");
+//        } catch (Exception e) {
+//            logger.debug("error on adding route", e);
+//            logger.debug("using default routes instead");
+//            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
+//            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(1), OFPort.of(6));
+//            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(4), OFPort.of(3));
+//            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
+//            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
+//            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
+//        }
+
+        // switches 1 and 4 are our entry points, handling only them
+        //TODO: handle flow from AND to hosts!
+//        if (sw.getId().getLong() == 1) {
+//            //TODO: routing from 10.0.0.1 to 10.0.0.2
+////            logger.debug("switch {}", sw.getId().getLong());
+////            Flows.sendPacketOut(sw, (OFPacketIn) msg, cntx, OFPort.of(3));
+//            try {
+//                logger.debug("getting the current route from FamtarTopology...");
+//                for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_ONE, FamtarTopology.HOST_TWO)) {
+//                    IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
+//                    Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
+//                    Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+//                }
+//                logger.debug("...done");
+//            } catch (Exception e) {
+//                logger.debug("error on adding route", e);
+//                logger.debug("using default routes instead");
+//                Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
+//                Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(1), OFPort.of(6));
+//                Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(4), OFPort.of(3));
+//            }
+//        } else if (sw.getId().getLong() == 4) {
+            try {
+                logger.debug("getting the current route from FamtarTopology...");
+                for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_TWO, FamtarTopology.HOST_ONE)) {
+                    IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
+                    Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
+                    Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+                }
+                logger.debug("...done");
+            } catch (Exception e) {
+                logger.debug("error on adding route", e);
+                logger.debug("using default routes instead");
+                Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
+                Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
+                Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
+            }
+//            //TODO: routing from 10.0.0.2 to 10.0.0.1
+////            logger.debug("switch {}", sw.getId().getLong());
+////            Flows.sendPacketOut(sw, (OFPacketIn) msg, cntx, OFPort.of(3));
+////            for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_TWO, FamtarTopology.HOST_ONE)) {
+////                IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
+////                Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
+////            }
+//        }
 
         return Command.STOP;
-    }
-
-    //TODO: wrap this with try/catch - NPE from null topology
-    private void buildShortestPaths(final DatapathId root)
-    {
-        final TopologyManager topologyManager = (TopologyManager) this.topologyService;
-        final TopologyInstance topologyInstance = topologyManager.getCurrentInstance();
-
-        //TODO: implement this to use updated weights
-        final Map<DatapathId, Set<Link>> allLinks = topologyManager.getAllLinks();
-        final HashMap<Link, Integer> linkCost = new HashMap<>();
-        for (Set<Link> linkSet : allLinks.values()) {
-            for (Link link : linkSet) {
-                linkCost.put(link, FamtarTopology.DEFAULT_LINK_COST);
-            }
-        }
-
-        //TODO: true or false? -- we're adding flows from the end of the path
-        final boolean isDstRooted = false;
-        final BroadcastTree dijkstraBroadcastTree = topologyInstance.dijkstra(
-                this.topologyService.getAllLinks(),
-                root,
-                famtarStatisticsCollector.getLinksCosts(),
-                isDstRooted);
-
-        logger.debug(String.format(
-                "Built the following broadcast tree with switch_%s as root (isDstRooted = %s)\n%s",
-                root, isDstRooted, dijkstraBroadcastTree.toString()));
     }
 
     private boolean drop(FloodlightContext context)
@@ -158,6 +185,19 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 
         return false;
     }
+
+    private Map<Link, Integer> initializeLinksCosts()
+    {
+        Map<Link, Integer> linksCosts = new HashMap<>();
+        Map<NodePortTuple, Set<Link>> switchPortLinks = ((TopologyManager) topologyService).getSwitchPortLinks();
+        for (Map.Entry<NodePortTuple, Set<Link>> e : switchPortLinks.entrySet()) {
+            for (Link link : e.getValue()) {
+                linksCosts.put(link, FamtarTopology.DEFAULT_LINK_COST);
+            }
+        }
+        return linksCosts;
+    }
+
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices()
