@@ -64,38 +64,12 @@ public class FamtarStatisticsCollector
         {
             logger.debug("checking bandwidth utilization...");
             boolean changed = false;
-            Map<Link, Integer> linksCosts = new HashMap<>();
-            Map<NodePortTuple, Set<Link>> switchPortLinks = ((TopologyManager) topologyService).getSwitchPortLinks();
-            for (Map.Entry<NodePortTuple, Set<Link>> e : switchPortLinks.entrySet()) {
-                for (Link link : e.getValue()) {
-                    linksCosts.put(link, FamtarTopology.DEFAULT_LINK_COST);
-                }
-            }
+            Map<Link, Integer> linksCosts = initializeLinksCosts();
 
-            final Map<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurements = statisticsCollector.getBandwidthConsumption();
-
-            for (Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement : bandwidthMeasurements.entrySet()) {
-                if (isTxAbove(bandwidthMeasurement)) {
-                    changed = true;
-                    for (Map.Entry<NodePortTuple, Set<Link>> switchPortLink : switchPortLinks.entrySet()) {
-                        if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
-                            for (Link link : switchPortLink.getValue()) {
-                                linksCosts.put(link, FamtarTopology.MAX_LINK_COST);
-                                logger.debug("\t changed cost on {} to MAX_COST", link);
-                            }
-                        }
-                    }
-                } else if (isTxBelow(bandwidthMeasurement)) {
-                    changed = true;
-                    for (Map.Entry<NodePortTuple, Set<Link>> switchPortLink : switchPortLinks.entrySet()) {
-                        if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
-                            for (Link link : switchPortLink.getValue()) {
-                                linksCosts.put(link, FamtarTopology.DEFAULT_LINK_COST);
-                                logger.debug("\t changed cost on {} to DEFAULT_COST", link);
-                            }
-                        }
-                    }
-                }
+            for (Map.Entry<NodePortTuple, SwitchPortBandwidth> measurement : statisticsCollector.getBandwidthConsumption().entrySet()) {
+                int updatedCost = getCost(measurement);
+                changed = updatedCost > 0;
+                updateLinkCost(linksCosts, measurement, updatedCost);
             }
 
             if (changed) {
@@ -105,16 +79,57 @@ public class FamtarStatisticsCollector
             logger.debug("...done");
         }
 
-        private boolean isTxBelow(final Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement)
+        private Map<Link, Integer> initializeLinksCosts()
         {
-            return bandwidthMeasurement.getValue().getBitsPerSecondTx()
-                    .compareTo(U64.of((long) (DECREASE_THRESHOLD * MAX_SPEED))) < 0;
+            Map<Link, Integer> linksCosts = new HashMap<>();
+            Map<NodePortTuple, Set<Link>> switchPortLinks = ((TopologyManager) topologyService).getSwitchPortLinks();
+            for (Map.Entry<NodePortTuple, Set<Link>> e : switchPortLinks.entrySet()) {
+                for (Link link : e.getValue()) {
+                    linksCosts.put(link, FamtarTopology.DEFAULT_LINK_COST);
+                }
+            }
+            return linksCosts;
         }
 
-        private boolean isTxAbove(Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement)
+        private void updateLinkCost(Map<Link, Integer> linksCosts,
+                                    Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement,
+                                    int updatedCost)
+        {
+            Map<NodePortTuple, Set<Link>> switchPortLinks = ((TopologyManager) topologyService).getSwitchPortLinks();
+            for (Map.Entry<NodePortTuple, Set<Link>> switchPortLink : switchPortLinks.entrySet()) {
+                if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
+                    for (Link link : switchPortLink.getValue()) {
+                        linksCosts.put(link, updatedCost);
+                        logger.debug("\t changed cost on {} to {}", link, updatedCost);
+                    }
+                }
+            }
+        }
+
+        private int getCost(Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement)
+        {
+            if (isTxRxAbove(bandwidthMeasurement)) {
+                return FamtarTopology.MAX_LINK_COST;
+            } else if (isTxRxBelow(bandwidthMeasurement)) {
+                return FamtarTopology.DEFAULT_LINK_COST;
+            }
+            return -1;
+        }
+
+        private boolean isTxRxBelow(final Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement)
         {
             return bandwidthMeasurement.getValue().getBitsPerSecondTx()
-                    .compareTo(U64.of((long) (INCREASE_THRESHOLD * MAX_SPEED))) > 0;
+                    .compareTo(U64.of((long) (DECREASE_THRESHOLD * MAX_SPEED))) < 0 ||
+                    bandwidthMeasurement.getValue().getBitsPerSecondRx()
+                            .compareTo(U64.of((long) (DECREASE_THRESHOLD * MAX_SPEED))) < 0;
+        }
+
+        private boolean isTxRxAbove(Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement)
+        {
+            return bandwidthMeasurement.getValue().getBitsPerSecondTx()
+                    .compareTo(U64.of((long) (INCREASE_THRESHOLD * MAX_SPEED))) > 0 ||
+                    bandwidthMeasurement.getValue().getBitsPerSecondRx()
+                            .compareTo(U64.of((long) (INCREASE_THRESHOLD * MAX_SPEED))) > 0;
         }
 
         private void logBandwidthMeasurements(Map<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurements)
