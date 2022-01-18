@@ -19,10 +19,8 @@ import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.topology.TopologyManager;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
-import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +64,7 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         topologyService.addListener(new FamtarTopologyListener());
         statisticsService.collectStatistics(true); //TODO: may not be needed
-        famtarTopology.calculatePaths(initializeLinksCosts());
+//        famtarTopology.calculatePaths(initializeLinksCosts());
         logger.info("******************* START **************************");
     }
 
@@ -92,9 +90,8 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 //        logger.info("************* NEW PACKET IN *************");
 
         //TODO: handle first buffered packet -- vide lab 5, extract the IP and send it manually
-
-        //TODO: PANIC
-//        try {
+        //TODO
+        try {
             logger.debug("getting the current route from FamtarTopology...");
             for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_ONE, FamtarTopology.HOST_TWO)) {
                 IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
@@ -107,16 +104,10 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
                 Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
             }
             logger.debug("...done");
-//        } catch (Exception e) {
-//            logger.debug("error on adding route", e);
-//            logger.debug("using default routes instead");
-//            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(3), OFPort.of(4));
-//            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(1), OFPort.of(6));
-//            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(4), OFPort.of(3));
-//            Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
-//            Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
-//            Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
-//        }
+        } catch (Exception e) {
+            logger.debug("error on adding route, forcing path calculation");
+            this.famtarTopology.calculatePaths(initializeLinksCosts());
+        }
 
         // switches 1 and 4 are our entry points, handling only them
         //TODO: handle flow from AND to hosts!
@@ -140,21 +131,21 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 //                Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(4), OFPort.of(3));
 //            }
 //        } else if (sw.getId().getLong() == 4) {
-            try {
-                logger.debug("getting the current route from FamtarTopology...");
-                for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_TWO, FamtarTopology.HOST_ONE)) {
-                    IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
-                    Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
-                    Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
-                }
-                logger.debug("...done");
-            } catch (Exception e) {
-                logger.debug("error on adding route", e);
-                logger.debug("using default routes instead");
-                Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
-                Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
-                Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
-            }
+//            try {
+//                logger.debug("getting the current route from FamtarTopology...");
+//                for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_TWO, FamtarTopology.HOST_ONE)) {
+//                    IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
+//                    Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());
+//                    Flows.add(aSwitch, cntx, hop.getOutPort(), hop.getInPort());
+//                }
+//                logger.debug("...done");
+//            } catch (Exception e) {
+//                logger.debug("error on adding route", e);
+//                logger.debug("using default routes instead");
+//                Flows.add(switchService.getSwitch(DatapathId.of(1)), cntx, OFPort.of(3), OFPort.of(4));
+//                Flows.add(switchService.getSwitch(DatapathId.of(7)), cntx, OFPort.of(6), OFPort.of(1));
+//                Flows.add(switchService.getSwitch(DatapathId.of(4)), cntx, OFPort.of(4), OFPort.of(3));
+//            }
 //            //TODO: routing from 10.0.0.2 to 10.0.0.1
 ////            logger.debug("switch {}", sw.getId().getLong());
 ////            Flows.sendPacketOut(sw, (OFPacketIn) msg, cntx, OFPort.of(3));
@@ -188,10 +179,12 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
 
     private Map<Link, Integer> initializeLinksCosts()
     {
+//        logger.debug("initializing link costs map...");
         Map<Link, Integer> linksCosts = new HashMap<>();
         Map<NodePortTuple, Set<Link>> switchPortLinks = ((TopologyManager) topologyService).getSwitchPortLinks();
         for (Map.Entry<NodePortTuple, Set<Link>> e : switchPortLinks.entrySet()) {
             for (Link link : e.getValue()) {
+//                logger.debug("\tadding {}", link);
                 linksCosts.put(link, FamtarTopology.DEFAULT_LINK_COST);
             }
         }

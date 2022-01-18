@@ -62,7 +62,7 @@ public class FamtarStatisticsCollector
 
         public void run()
         {
-            logger.debug("checking bandwidth utilization...");
+//            logger.debug("checking bandwidth utilization...");
             boolean changed = false;
             Map<Link, Integer> linksCosts = initializeLinksCosts();
 
@@ -73,10 +73,10 @@ public class FamtarStatisticsCollector
             }
 
             if (changed) {
-                logger.debug("Calling shortest paths recalculation");
+//                logger.debug("Calling shortest paths recalculation");
                 famtarTopology.calculatePaths(linksCosts);
             }
-            logger.debug("...done");
+//            logger.debug("...done");
         }
 
         private Map<Link, Integer> initializeLinksCosts()
@@ -91,6 +91,16 @@ public class FamtarStatisticsCollector
             return linksCosts;
         }
 
+        private int getCost(Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement)
+        {
+            if (isTxRxAbove(bandwidthMeasurement)) {
+                return FamtarTopology.MAX_LINK_COST;
+            } else if (isTxRxBelow(bandwidthMeasurement)) {
+                return FamtarTopology.DEFAULT_LINK_COST;
+            }
+            return -1;
+        }
+
         private void updateLinkCost(Map<Link, Integer> linksCosts,
                                     Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement,
                                     int updatedCost)
@@ -100,20 +110,10 @@ public class FamtarStatisticsCollector
                 if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
                     for (Link link : switchPortLink.getValue()) {
                         linksCosts.put(link, updatedCost);
-                        logger.debug("\t changed cost on {} to {}", link, updatedCost);
+//                        logger.debug("\t changed cost on {} to {}", link, updatedCost);
                     }
                 }
             }
-        }
-
-        private int getCost(Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement)
-        {
-            if (isTxRxAbove(bandwidthMeasurement)) {
-                return FamtarTopology.MAX_LINK_COST;
-            } else if (isTxRxBelow(bandwidthMeasurement)) {
-                return FamtarTopology.DEFAULT_LINK_COST;
-            }
-            return -1;
         }
 
         private boolean isTxRxBelow(final Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement)

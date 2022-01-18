@@ -64,11 +64,11 @@ public class FamtarTopology
             logger.debug("calculating paths...");
             final BroadcastTree fromOne = buildShortestPaths(DatapathId.of(1), linksCosts);
             List<Hop> routeToSwitchFour = getPath(DatapathId.of(1), DatapathId.of(4), fromOne);
-            routes.put(HOST_TWO, routeToSwitchFour);
+            this.routes.put(HOST_TWO, routeToSwitchFour);
 
             final BroadcastTree fromFour = buildShortestPaths(DatapathId.of(4), linksCosts);
             List<Hop> routeToSwitchOne = getPath(DatapathId.of(4), DatapathId.of(1), fromFour);
-            routes.put(HOST_TWO, routeToSwitchOne);
+            this.routes.put(HOST_TWO, routeToSwitchOne);
 
             this.previousCosts = ImmutableMap.copyOf(linksCosts);
         }
@@ -106,7 +106,6 @@ public class FamtarTopology
         return routes.get(to);
     }
 
-    //TODO: wrap this with try/catch - NPE from null topology
     private BroadcastTree buildShortestPaths(DatapathId root, Map<Link, Integer> linksCosts)
     {
         final TopologyManager topologyManager = (TopologyManager) this.topologyService;
