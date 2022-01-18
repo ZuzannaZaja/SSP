@@ -24,7 +24,7 @@ public class FamtarStatisticsCollector
 {
     private static final Random RANDOM = new Random();
     private static final int PORT_STATISTICS_POLLING_INTERVAL = 2000; // in ms
-    private static final long MAX_SPEED = (long) 10E7; // in bps
+    private static final long MAX_SPEED = (long) 1E5; // in bps
     private static final double INCREASE_THRESHOLD = 0.9; // 0.9
     private static final double DECREASE_THRESHOLD = 0.7; // 0.7
     private static FamtarStatisticsCollector singleton;

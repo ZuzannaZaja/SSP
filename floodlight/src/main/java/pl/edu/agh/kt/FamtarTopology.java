@@ -20,18 +20,6 @@ import java.util.Map;
 
 public class FamtarTopology
 {
-    //TODO keep the current topology image -- the nodes, links, their costs and capacities (12 links -> 24 entries)
-    //TODO make it a singleton -- done
-    //TODO use a map of routes between all nodes (7 nodes -> 21 pairs, not a problem)
-    //TODO storing IP to port mappings (we can deal with fixed entries and just differentiate flows on UDP ports)
-
-    /*
-    TODO Methods
-    1. accept a node to the topology -- check with the LLDP
-    2. set link cost -- called from FamtarStatsListener
-    any topology change (new node, node removal or cost change) triggers Dijkstra recalculation
-    * */
-
     static final int DEFAULT_LINK_COST = 1;
     static final int MAX_LINK_COST = 10;
     static final IPv4Address HOST_ONE = IPv4Address.of(10, 0, 0, 1);
@@ -43,7 +31,6 @@ public class FamtarTopology
 
     private Map<IPv4Address, List<Hop>> routes;
     private Map<Link, Integer> previousCosts;
-
 
     private static Map<IPv4Address, NodePortTuple> HOSTS_MAPPING = new ImmutableMap.Builder<IPv4Address, NodePortTuple>()
             .put(HOST_ONE, new NodePortTuple(DatapathId.of(1L), OFPort.of(4)))
@@ -111,17 +98,15 @@ public class FamtarTopology
         final TopologyManager topologyManager = (TopologyManager) this.topologyService;
         final TopologyInstance topologyInstance = topologyManager.getCurrentInstance();
 
-        //TODO: true or false? -- we're adding flows from the end of the path
-        final boolean isDstRooted = false;
         final BroadcastTree dijkstraBroadcastTree = topologyInstance.dijkstra(
                 this.topologyService.getAllLinks(),
                 root,
                 linksCosts,
-                isDstRooted);
+                false);
 
         logger.debug(String.format(
                 "Built the following broadcast tree with switch_%s as root (isDstRooted = %s)\n%s",
-                root, isDstRooted, dijkstraBroadcastTree.toString()));
+                root, false, dijkstraBroadcastTree.toString()));
 
         return dijkstraBroadcastTree;
     }

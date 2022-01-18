@@ -62,7 +62,6 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException
     {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        topologyService.addListener(new FamtarTopologyListener());
         statisticsService.collectStatistics(true); //TODO: may not be needed
 //        famtarTopology.calculatePaths(initializeLinksCosts());
         logger.info("******************* START **************************");
@@ -105,7 +104,6 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
             }
             logger.debug("...done");
         } catch (Exception e) {
-            logger.debug("error on adding route, forcing path calculation");
             this.famtarTopology.calculatePaths(initializeLinksCosts());
         }
 
@@ -119,12 +117,17 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
             return true;
         } else if (ethernetFrame.getEtherType() == EthType.IPv4) {
             final IPv4 iPv4packet = (IPv4) ethernetFrame.getPayload();
-            if (iPv4packet.getProtocol() == IpProtocol.UDP) {
-                final UDP udpSegment = (UDP) iPv4packet.getPayload();
-                return udpSegment.getDestinationPort().getPort() == 67 ||
-                        udpSegment.getDestinationPort().getPort() == 68 ||
-                        udpSegment.getSourcePort().getPort() == 67 ||
-                        udpSegment.getSourcePort().getPort() == 68;
+            // this should handle issues with deserialization of D-ITG packets
+            try {
+                if (iPv4packet.getProtocol() == IpProtocol.UDP) {
+                    final UDP udpSegment = (UDP) iPv4packet.getPayload();
+                    return udpSegment.getDestinationPort().getPort() == 67 ||
+                            udpSegment.getDestinationPort().getPort() == 68 ||
+                            udpSegment.getSourcePort().getPort() == 67 ||
+                            udpSegment.getSourcePort().getPort() == 68;
+                }
+            } catch (Exception e) {
+                return false;
             }
         }
 
@@ -144,7 +147,6 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
         }
         return linksCosts;
     }
-
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices()

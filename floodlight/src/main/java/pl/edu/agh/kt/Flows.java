@@ -8,7 +8,6 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
-import net.floodlightcontroller.topology.NodePortTuple;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -23,8 +22,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 public class Flows
 {
     private static final Logger logger = LoggerFactory.getLogger(Flows.class);
@@ -36,18 +33,6 @@ public class Flows
     public Flows()
     {
         logger.info("Flows() begin/end");
-    }
-
-    //TODO: implement (probably add some other parameters)
-    public static void addPath(List<NodePortTuple> path)
-    {
-//        Lists.reverse(path)
-//        logger.debug("Adding path {}...", path);
-    }
-
-    public static void sendPacketOut()
-    {
-        //TODO vide lab 5
     }
 
     public static void add(IOFSwitch ofSwitch, FloodlightContext cntx, OFPort inPort, OFPort outPort)
@@ -80,38 +65,6 @@ public class Flows
             }
         }
     }
-
-    public static void addReverse(IOFSwitch ofSwitch, FloodlightContext cntx, OFPort inPort, OFPort outPort)
-    {
-        if (ofSwitch == null) {
-            logger.debug("got null switch, unable to add flow");
-        } else {
-            final Match match = buildReverseMatch(ofSwitch, cntx, inPort);
-            final OFActionOutput actionOutput = ofSwitch.getOFFactory().actions().buildOutput()
-                    .setPort(outPort)
-                    .setMaxLen(Integer.MAX_VALUE)
-                    .build();
-
-            final OFFlowAdd ofFlowAdd = ofSwitch.getOFFactory().buildFlowAdd()
-                    .setMatch(match)
-                    .setActions(ImmutableList.<OFAction>of(actionOutput))
-                    .setOutPort(outPort)
-                    .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-                    .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
-                    .setPriority(FLOWMOD_DEFAULT_PRIORITY)
-                    .setBufferId(OFBufferId.NO_BUFFER)
-                    .build();
-            try {
-                ofSwitch.write(ofFlowAdd);
-//                logger.info("Flow from s_{}/{} forwarded to port s_{}/{}",
-//                        new Object[]{ofSwitch.getId().getLong(), inPort.getPortNumber(),
-//                                ofSwitch.getId().getLong(), outPort.getPortNumber()});
-            } catch (Exception e) {
-                logger.error("Unable to add flow to {}", ofSwitch.getId().getLong(), e);
-            }
-        }
-    }
-
 
     public static Match buildMatch(IOFSwitch sw, FloodlightContext cntx, OFPort inPort)
     {
@@ -221,7 +174,6 @@ public class Flows
         return match;
     }
 
-
     public static void sendPacketOut(IOFSwitch iofSwitch,
                                      OFPacketIn packetIn,
                                      FloodlightContext context,
@@ -246,6 +198,5 @@ public class Flows
                 logger.error("An error occurred while handling packet out", e);
             }
         }
-
     }
 }
