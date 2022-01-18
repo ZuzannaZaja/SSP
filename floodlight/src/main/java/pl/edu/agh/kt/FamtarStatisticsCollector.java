@@ -33,7 +33,6 @@ public class FamtarStatisticsCollector
     private IStatisticsService statisticsCollector;
     private ITopologyService topologyService;
     private FamtarTopology famtarTopology;
-    private Map<Link, Integer> linksCosts;
 
     private FamtarStatisticsCollector(IStatisticsService statisticsCollector,
                                       ITopologyService topologyService,
@@ -42,7 +41,6 @@ public class FamtarStatisticsCollector
         this.statisticsCollector = statisticsCollector;
         this.topologyService = topologyService;
         this.famtarTopology = famtarTopology;
-        this.linksCosts = new HashMap<>();
         new Timer().scheduleAtFixedRate(new BandwidthMonitor(), 0, PORT_STATISTICS_POLLING_INTERVAL);
     }
 
@@ -58,11 +56,6 @@ public class FamtarStatisticsCollector
         return singleton;
     }
 
-    public Map<Link, Integer> getLinksCosts()
-    {
-        return this.linksCosts;
-    }
-
     public class BandwidthMonitor extends TimerTask
     {
         private final Logger logger = LoggerFactory.getLogger(BandwidthMonitor.class);
@@ -71,8 +64,9 @@ public class FamtarStatisticsCollector
         {
             logger.debug("checking bandwidth utilization...");
             boolean changed = false;
+            Map<Link, Integer> linksCosts = new HashMap<>();
             Map<NodePortTuple, Set<Link>> switchPortLinks = ((TopologyManager) topologyService).getSwitchPortLinks();
-            for (Map.Entry<NodePortTuple, Set<Link>> e: switchPortLinks.entrySet()) {
+            for (Map.Entry<NodePortTuple, Set<Link>> e : switchPortLinks.entrySet()) {
                 for (Link link : e.getValue()) {
                     linksCosts.put(link, FamtarTopology.DEFAULT_LINK_COST);
                 }
@@ -80,34 +74,24 @@ public class FamtarStatisticsCollector
 
             final Map<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurements = statisticsCollector.getBandwidthConsumption();
 
-//            if (RANDOM.nextFloat() > 0.7) {
-//                logBandwidthMeasurements(bandwidthMeasurements);
-//            }
-
             for (Map.Entry<NodePortTuple, SwitchPortBandwidth> bandwidthMeasurement : bandwidthMeasurements.entrySet()) {
                 if (isTxAbove(bandwidthMeasurement)) {
+                    changed = true;
                     for (Map.Entry<NodePortTuple, Set<Link>> switchPortLink : switchPortLinks.entrySet()) {
                         if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
                             for (Link link : switchPortLink.getValue()) {
-                                final Integer previous = linksCosts.get(link);
-                                if (previous == FamtarTopology.DEFAULT_LINK_COST) {
-                                    linksCosts.put(link, FamtarTopology.MAX_LINK_COST);
-                                    logger.debug("\t changed cost on {} to MAX_COST", link);
-                                    changed = changed || true;
-                                }
+                                linksCosts.put(link, FamtarTopology.MAX_LINK_COST);
+                                logger.debug("\t changed cost on {} to MAX_COST", link);
                             }
                         }
                     }
-                } else if (isTxBelow(bandwidthMeasurement) ) {
+                } else if (isTxBelow(bandwidthMeasurement)) {
+                    changed = true;
                     for (Map.Entry<NodePortTuple, Set<Link>> switchPortLink : switchPortLinks.entrySet()) {
                         if (isTheSameLink(bandwidthMeasurement, switchPortLink)) {
                             for (Link link : switchPortLink.getValue()) {
-                                final Integer previous = linksCosts.get(link);
-                                if (previous == FamtarTopology.MAX_LINK_COST) {
-                                    linksCosts.put(link, FamtarTopology.DEFAULT_LINK_COST);
-                                    logger.debug("\t changed cost on {} to DEFAULT_COST", link);
-                                    changed = changed || true;
-                                }
+                                linksCosts.put(link, FamtarTopology.DEFAULT_LINK_COST);
+                                logger.debug("\t changed cost on {} to DEFAULT_COST", link);
                             }
                         }
                     }
@@ -116,7 +100,6 @@ public class FamtarStatisticsCollector
 
             if (changed) {
                 logger.debug("Calling shortest paths recalculation");
-//                logLinksCosts();
                 famtarTopology.calculatePaths(linksCosts);
             }
             logger.debug("...done");
@@ -145,7 +128,7 @@ public class FamtarStatisticsCollector
             }
         }
 
-        private void logLinksCosts()
+        private void logLinksCosts(Map<Link, Integer> linksCosts)
         {
             logger.debug("Current state of link costs ({} entries)", linksCosts.size());
             for (Map.Entry<Link, Integer> entry : linksCosts.entrySet()) {
