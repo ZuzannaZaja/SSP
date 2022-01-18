@@ -25,12 +25,12 @@ class FamtarTopo(Topo):
         switches = [self.addSwitch('s_{}'.format(i)) for i in range(1, number_of_switches+1)]
 
         # TODO: add link speeds here?
-        switch_links = [(1, 2, 100), (1, 6, 1000), (1, 7, 10), (2, 3, 1000), (2, 7, 1000), (3, 4, 100), (5, 4, 100), (6, 5, 1000), (6, 7, 100), (7, 3, 100), (7, 5, 1000), (7, 4, 100)]
+        switch_links = [(1, 2, 10), (1, 6, 10), (1, 7, 10), (2, 3, 10), (2, 7, 10), (3, 4, 10), (5, 4, 10), (6, 5, 10), (6, 7, 10), (7, 3, 10), (7, 5, 10), (7, 4, 10)]
         for left, right, rate in switch_links:
             self.addLink(switches[left-1], switches[right-1],bw=rate)
 
-        self.addLink(leftHost, switches[0], bw=10000)
-        self.addLink(rightHost, switches[3], bw=10000)
+        self.addLink(leftHost, switches[0], bw=10)
+        self.addLink(rightHost, switches[3], bw=10)
 	
 
 
@@ -55,6 +55,10 @@ def runNet():
 	net.switches[6].dpctl('add-flow', 'in_port=6,idle_timeout=0,actions=output:1')
 	net.switches[3].dpctl('add-flow', 'in_port=4,idle_timeout=0,actions=output:3')
 	net.switches[3].dpctl('add-flow', 'in_port=3,idle_timeout=0,actions=output:4')
+
+        print "---------------Ping--------------"
+        net.pingAll()
+
 	
 	print "Generacja ruchu"
 
@@ -65,10 +69,6 @@ def runNet():
 	print net.hosts[1].cmd('/home/floodlight/D-ITG-2.8.1-r1023/bin/ITGDec receiver.log')
         net.stop()
 
-
-	print "Ping"
-	net.pingAll()
-	net.stop()
 
 def runController():
 	"""Run basic topology with controller"""
