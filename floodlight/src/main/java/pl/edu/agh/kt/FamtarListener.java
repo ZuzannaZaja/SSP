@@ -63,7 +63,6 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
     {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         statisticsService.collectStatistics(true); //TODO: may not be needed
-//        famtarTopology.calculatePaths(initializeLinksCosts());
         logger.info("******************* START **************************");
     }
 
@@ -86,12 +85,8 @@ public class FamtarListener implements IFloodlightModule, IOFMessageListener
             return Command.STOP;
         }
 
-//        logger.info("************* NEW PACKET IN *************");
-
-        //TODO: handle first buffered packet -- vide lab 5, extract the IP and send it manually
-        //TODO switches 1 and 4 are our entry points, handle only them
         try {
-            logger.debug("getting the current route from FamtarTopology...");
+//            logger.debug("getting the current route from FamtarTopology...");
             for (Hop hop : this.famtarTopology.getPath(FamtarTopology.HOST_ONE, FamtarTopology.HOST_TWO)) {
                 IOFSwitch aSwitch = switchService.getSwitch(hop.getSwitchId());
                 Flows.add(aSwitch, cntx, hop.getInPort(), hop.getOutPort());

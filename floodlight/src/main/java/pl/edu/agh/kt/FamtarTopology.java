@@ -89,7 +89,7 @@ public class FamtarTopology
 
     public List<Hop> getPath(IPv4Address from, IPv4Address to)
     {
-        logger.debug("getting route: {} -> {}", from, to);
+//        logger.debug("getting route: {} -> {}", from, to);
         return routes.get(to);
     }
 
